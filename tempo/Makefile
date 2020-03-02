@@ -157,3 +157,13 @@ kill:
 bash:
 	source "$(ENV)" ; \
 	bash
+
+clean:
+	rm -f bamMapping.tsv \
+	fileTracking.tsv \
+	job.id \
+	.nextflow.pid
+	rm -rf .nextflow
+
+clean-all: clean
+	rm -rf logs output work submit.lsf.sh
