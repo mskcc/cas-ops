@@ -31,7 +31,7 @@ tempo:
 	git clone git@github.com:mskcc/tempo.git && cd tempo && git checkout "$(TEMPO_TAG)"
 
 $(LOG_DIR):
-	mkdir -p "$(LOG_DIR)"
+	@mkdir -p "$(LOG_DIR)"
 
 init: ./nextflow tempo $(LOG_DIR)
 
@@ -96,42 +96,43 @@ SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=120:00
 SUB_SCRIPT:=submit.lsf.sh
 $(SUB_SCRIPT):
-	echo '#!/bin/bash' > $(SUB_SCRIPT)
-	echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
-	echo '#BSUB -n $(SUB_CPUS)' >> $(SUB_SCRIPT)
-	echo '#BSUB -R "$(SUB_MEM_ARG)"' >> $(SUB_SCRIPT)
-	echo '#BSUB -oo $(LOG_DIR)/%J.log' >> $(SUB_SCRIPT)
-	echo 'set -eux' >> $(SUB_SCRIPT)
-	echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
-	echo 'touch $(SUBMIT_LOCKFILE)' >> $(SUB_SCRIPT)
-	echo 'get_pid(){ head -1 $(NXF_PID_FILE); }' >> $(SUB_SCRIPT)
-	echo 'rm_submit(){ echo ">>> trap: rm_submit" ; [ -e $(SUBMIT_LOCKFILE) ] && rm -f $(SUBMIT_LOCKFILE) || : ; }' >> $(SUB_SCRIPT)
-	echo 'wait_pid(){ local pid=$$1 ; while kill -0 $$pid; do echo waiting for process $$pid to end ; sleep 1 ; done ; }' >> $(SUB_SCRIPT)
-	echo 'nxf_kill(){ rm_submit ; echo ">>> trap: nxf_kill" && pid=$$(get_pid) && kill $$pid && wait_pid $$pid ; }' >> $(SUB_SCRIPT)
-	echo 'trap nxf_kill HUP' >> $(SUB_SCRIPT)
-	echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
-	echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
-	echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	echo 'make run-bg TIMESTAMP=$(TIMESTAMP)' >> $(SUB_SCRIPT)
+	@echo '#!/bin/bash' > $(SUB_SCRIPT)
+	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
+	@echo '#BSUB -n $(SUB_CPUS)' >> $(SUB_SCRIPT)
+	@echo '#BSUB -R "$(SUB_MEM_ARG)"' >> $(SUB_SCRIPT)
+	@echo '#BSUB -oo $(LOG_DIR)/%J.log' >> $(SUB_SCRIPT)
+	@echo 'set -eux' >> $(SUB_SCRIPT)
+	@echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
+	@echo 'touch $(SUBMIT_LOCKFILE)' >> $(SUB_SCRIPT)
+	@echo 'get_pid(){ head -1 $(NXF_PID_FILE); }' >> $(SUB_SCRIPT)
+	@echo 'rm_submit(){ echo ">>> trap: rm_submit" ; [ -e $(SUBMIT_LOCKFILE) ] && rm -f $(SUBMIT_LOCKFILE) || : ; }' >> $(SUB_SCRIPT)
+	@echo 'wait_pid(){ local pid=$$1 ; while kill -0 $$pid; do echo waiting for process $$pid to end ; sleep 1 ; done ; }' >> $(SUB_SCRIPT)
+	@echo 'nxf_kill(){ rm_submit ; echo ">>> trap: nxf_kill" && pid=$$(get_pid) && kill $$pid && wait_pid $$pid ; }' >> $(SUB_SCRIPT)
+	@echo 'trap nxf_kill HUP' >> $(SUB_SCRIPT)
+	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
+	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
+	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
+	@echo 'make run-bg TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 .PHONY: $(SUB_SCRIPT)
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
 JOB_ID_FILE:=job.id
 submit: init
-	if [ -e "$(SUBMIT_LOCKFILE)" ]; then \
+	@if [ -e "$(SUBMIT_LOCKFILE)" ]; then \
 	echo ">>> ERROR: Workflow locked by $(SUBMIT_LOCKFILE); has an instance of the pipeline has already been submitted?"; exit 1 ; \
 	else \
 	$(MAKE) $(SUB_SCRIPT) && \
 	bsub < $(SUB_SCRIPT) | tee >( sed -e 's|Job <\([0-9]*\)>.*|\1|g' > $(JOB_ID_FILE) ) ; \
+	echo ">>> Pipeline submitted, log dir will be: $(LOG_DIR)" ; \
 	fi
 
 # check status of the leader job
 check: $(JOB_ID_FILE)
-	bjobs "$$(head -1 $(JOB_ID_FILE))"
+	@bjobs "$$(head -1 $(JOB_ID_FILE))"
 
 # kill the leader job
 kill:
-	[ -e "$(JOB_ID_FILE)" ] && bkill "$$(head -1 $(JOB_ID_FILE))" || :
+	@[ -e "$(JOB_ID_FILE)" ] && bkill "$$(head -1 $(JOB_ID_FILE))" || :
 
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated
