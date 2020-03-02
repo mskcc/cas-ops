@@ -8,3 +8,8 @@ tempo/logs/
 .nextflow/*
 */.nextflow/*
 tempo/bamMapping.tsv
+.nextflow.log
+.nextflow.pid
+tempo/fileTracking.tsv
+tempo/output/
+tempo/.submitted
