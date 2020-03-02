@@ -10,6 +10,8 @@ Scripts to setup and run Tempo pipeline.
 
 ## Extras
 
+- `make submit RECIPE=test`: submit a test-run of the Tempo pipeline to LSF
+
 - `make kill`: kill a submitted pipeline (allows for clean Nextflow shutdown of child jobs)
 
 # Output
