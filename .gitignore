@@ -1,1 +1,10 @@
 nextflow
+tempo/mapping.tsv
+tempo/pairing.tsv
+submit.lsf.sh
+tempo/job.id
+tempo/logs/
+*/work/*
+.nextflow/*
+*/.nextflow/*
+tempo/bamMapping.tsv

@@ -1,0 +1,5 @@
+SAMPLE	TARGET	FASTQ_PE1	FASTQ_PE2
+Sample1	agilent	/path/to/Sample1_L000_R1_000.fastq.gz	/path/to/Sample1_L000_R2_000.fastq.gz
+Sample2	agilent	/path/to/Sample2_L000_R1_000.fastq.gz	/path/to/Sample2_L000_R2_000.fastq.gz
+Sample9	agilent	/path/to/Sample9_L000_R1_000.fastq.gz	/path/to/Sample9_L000_R2_000.fastq.gz
+Sample10	agilent	/path/to/Sample10_L000_R1_000.fastq.gz	/path/to/Sample10_L000_R2_000.fastq.gz

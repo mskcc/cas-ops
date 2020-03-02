@@ -2,7 +2,7 @@ SHELL:=/bin/bash
 UNAME:=$(shell uname)
 HOSTNAME:=$(shell hostname)
 TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
-LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
+export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
 export NXF_ANSI_LOG:=false
 export NXF_VER:=19.10.0
 export NXF_WORK:=$(CURDIR)/work
@@ -40,11 +40,11 @@ MAPPING_TSV:=$(CURDIR)/mapping.tsv
 PAIRING_TSV:=$(CURDIR)/pairing.tsv
 OUTPUT_DIR:=$(CURDIR)/output
 run: init $(MAPPING_TSV) $(PAIRING_TSV)
-	[ ! -f "$($(MAPPING_TSV))" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
-	[ ! -f "$($(PAIRING_TSV))" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
+	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
+	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
-	nextflow run tempo/pipeline.nf \
-	-log "$(NXF_LOG)" \
+	nextflow -log "$(NXF_LOG)" \
+	run tempo/pipeline.nf \
 	-resume \
 	-profile juno \
 	--genome 'GRCh37' \
@@ -55,8 +55,9 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV)
 	--outDir "$(OUTPUT_DIR)" \
 	-with-report "$(NXF_REPORT)" \
 	-with-timeline "$(NXF_TIMELINE)" \
-	-with-trace "$(NXF_TRACE)" | \
-	tee -a "$(STDOUT_LOG)"
+	-with-trace "$(NXF_TRACE)"
+	# | \
+	# tee -a "$(STDOUT_LOG)"
 
 # create an LSF submission script
 # memory usage; mem (GB) * cpus
@@ -72,15 +73,16 @@ $(SUB_SCRIPT):
 	echo '#BSUB -oo $(LOG_DIR)/%J.log' >> $(SUB_SCRIPT)
 	echo 'set -eux' >> $(SUB_SCRIPT)
 	echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
-	echo 'make run' >> $(SUB_SCRIPT)
+	echo 'make run TIMESTAMP=$(TIMESTAMP)' >> $(SUB_SCRIPT)
 .PHONY: $(SUB_SCRIPT)
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
 JOB_ID_FILE:=job.id
-submit: $(SUB_SCRIPT) $(LOG_DIR)
+submit: init $(SUB_SCRIPT)
 	bsub < $(SUB_SCRIPT) | tee >( sed -e 's|Job <\([0-9]*\)>.*|\1|g' > $(JOB_ID_FILE) )
 
-
+check: $(JOB_ID_FILE)
+	bjobs "$$(head -1 $(JOB_ID_FILE))"
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated
 bash:
