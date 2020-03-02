@@ -85,6 +85,21 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	echo "$$nxf_pid" > "$(NXF_PID_FILE)" && \
 	wait "$$nxf_pid"
 
+test: init
+	source "$(ENV)" ; \
+	nextflow -log "$(NXF_LOG)" \
+	run tempo/pipeline.nf \
+	--mapping tempo/test_inputs/local/full_test_mapping.tsv \
+	--pairing tempo/test_inputs/local/full_test_pairing.tsv \
+	-profile test_singularity \
+	--outDir results \
+	--somatic --germline --QC --aggregate \
+	-with-report "$(NXF_REPORT)" \
+	-with-timeline "$(NXF_TIMELINE)" \
+	-with-trace "$(NXF_TRACE)" & nxf_pid=$$! && \
+	echo "$$nxf_pid" > "$(NXF_PID_FILE)" && \
+	wait "$$nxf_pid"
+
 # create an LSF submission script
 # sets a submission lock file
 # NOTE: Nextflow locks itself from concurrent instances but need to lock against multiple 'make submit'
@@ -95,6 +110,7 @@ SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=120:00
 SUB_SCRIPT:=submit.lsf.sh
+RECIPE:=run-bg
 $(SUB_SCRIPT):
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
@@ -112,7 +128,7 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	@echo 'make run-bg TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 .PHONY: $(SUB_SCRIPT)
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
@@ -130,9 +146,11 @@ submit: init
 check: $(JOB_ID_FILE)
 	@bjobs "$$(head -1 $(JOB_ID_FILE))"
 
-# kill the leader job
+# kill the leader job or try to kill the Nextflow process id
 kill:
-	@[ -e "$(JOB_ID_FILE)" ] && bkill "$$(head -1 $(JOB_ID_FILE))" || :
+	@if [ -e "$(SUBMIT_LOCKFILE)" ] ; then bkill "$$(head -1 $(JOB_ID_FILE))" ; \
+	elif [ -e "$(NXF_PID_FILE)" ] ; then kill "$$(head -1 $(NXF_PID_FILE))" ; \
+	fi ;
 
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated
