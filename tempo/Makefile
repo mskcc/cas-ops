@@ -137,7 +137,7 @@ submit: init
 	@if [ -e "$(SUBMIT_LOCKFILE)" ]; then \
 	echo ">>> ERROR: Workflow locked by $(SUBMIT_LOCKFILE); has an instance of the pipeline has already been submitted?"; exit 1 ; \
 	else \
-	$(MAKE) $(SUB_SCRIPT) && \
+	$(MAKE) $(SUB_SCRIPT) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR) && \
 	bsub < $(SUB_SCRIPT) | tee >( sed -e 's|Job <\([0-9]*\)>.*|\1|g' > $(JOB_ID_FILE) ) ; \
 	echo ">>> Pipeline submitted, log dir will be: $(LOG_DIR)" ; \
 	fi
