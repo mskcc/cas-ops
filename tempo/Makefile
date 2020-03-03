@@ -2,6 +2,9 @@ SHELL:=/bin/bash
 UNAME:=$(shell uname)
 HOSTNAME:=$(shell hostname)
 TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
+EMAIL_USER:=$(shell whoami)
+EMAIL_HOST:=mskcc.org
+EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
 export NXF_ANSI_LOG:=false
 export NXF_VER:=19.10.0
@@ -81,7 +84,8 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	--outDir "$(OUTPUT_DIR)" \
 	-with-report "$(NXF_REPORT)" \
 	-with-timeline "$(NXF_TIMELINE)" \
-	-with-trace "$(NXF_TRACE)" & nxf_pid=$$! && \
+	-with-trace "$(NXF_TRACE)" \
+	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! && \
 	echo "$$nxf_pid" > "$(NXF_PID_FILE)" && \
 	wait "$$nxf_pid"
 
