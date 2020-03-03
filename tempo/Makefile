@@ -156,6 +156,63 @@ kill:
 	elif [ -e "$(NXF_PID_FILE)" ] ; then kill "$$(head -1 $(NXF_PID_FILE))" ; \
 	fi ;
 
+
+# ~~~~~ JIRA INTEGRATION ~~~~~ #
+JIRA_KEY:=$(CURDIR)/jira.json
+JIRA_CREDENTIALS_FILE:=/juno/work/ci/roslin-internal-services/Connect.txt
+JIRA_USERNAME:=$(shell head -1 $(JIRA_CREDENTIALS_FILE))
+JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
+JIRA_URL:=http://plvpipetrack1.mskcc.org:8090
+JIRA_PROJ:=CT
+
+# create a new Jira issue on the 'CT' board for this project
+jira-create:
+	@curl \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	-X POST \
+	--data '{"fields" : { "project": { "key": "$(JIRA_PROJ)"}, "summary": "Summary goes here", "issuetype": {"name" : "Task"}, "description" : "Description goes here"}}' \
+	-H "Content-Type: application/json" \
+	$(JIRA_URL)/rest/api/2/issue/ | tee "$(JIRA_KEY)"
+# {"fields" : { "project": { "key": board}, "summary": summary, "issuetype": {"name" : "Task"},  "reporter":{"name":scruffy_username}, "assignee":{"name":assignee}, "priority":{"name": "Major"}, "description" : message}}
+
+# send a message that the pipeline started
+jira-started: $(JIRA_KEY)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+	curl -H "Content-Type: application/json" \
+	-X POST \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	--data '{"body":"Started running pipeline in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
+	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+
+# send a message that the pipeline completed successfully
+jira-success: $(JIRA_KEY)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+	curl -H "Content-Type: application/json" \
+	-X POST \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	--data '{"body":"Pipeline finished successfully in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
+	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+
+# send a message that the pipeline failed
+jira-failed: $(JIRA_KEY)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+	curl -H "Content-Type: application/json" \
+	-X POST \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	--data '{"body":"Pipeline failed in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
+	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+
+# upload mapping files to the Jira
+jira-upload: $(JIRA_KEY)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+	curl -H "X-Atlassian-Token: nocheck" \
+	-X POST \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	-F "file=@$(MAPPING_TSV)" \
+	-F "file=@$(PAIRING_TSV)" \
+	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/attachments
+
+
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated
 bash:
