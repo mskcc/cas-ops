@@ -5,6 +5,7 @@ TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
 EMAIL_USER:=$(shell whoami)
 EMAIL_HOST:=mskcc.org
 EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
+CONFIG:=../config.json
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
 export NXF_ANSI_LOG:=false
 export NXF_VER:=19.10.0
@@ -158,26 +159,38 @@ kill:
 
 
 # ~~~~~ JIRA INTEGRATION ~~~~~ #
-JIRA_KEY:=$(CURDIR)/jira.json
+JIRA_CONFIG:=$(CURDIR)/jira.json
 JIRA_CREDENTIALS_FILE:=/juno/work/ci/roslin-internal-services/Connect.txt
 JIRA_USERNAME:=$(shell head -1 $(JIRA_CREDENTIALS_FILE))
 JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
 JIRA_URL:=http://plvpipetrack1.mskcc.org:8090
 JIRA_PROJ:=CT
+PROJECT:=
+# make sure ../config.json exists from deploy step in order to retrieve project
+check-config:
+	if [ ! -e "$(CONFIG)" ]; then echo ">>> ERROR: Config file $(CONFIG) does not exist; was this project created with 'make deploy'?" ; exit 1 ; fi
 
 # create a new Jira issue on the 'CT' board for this project
-jira-create:
+$(JIRA_CONFIG): check-config
 	@curl \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
 	-X POST \
-	--data '{"fields" : { "project": { "key": "$(JIRA_PROJ)"}, "summary": "Summary goes here", "issuetype": {"name" : "Task"}, "description" : "Description goes here"}}' \
+	--data '{"fields" : { "project": { "key": "$(JIRA_PROJ)"}, "summary": "Tempo $(PROJECT)", "issuetype": {"name" : "Task"}, "description" : "Description goes here"}}' \
 	-H "Content-Type: application/json" \
-	$(JIRA_URL)/rest/api/2/issue/ | tee "$(JIRA_KEY)"
+	$(JIRA_URL)/rest/api/2/issue/ | tee "$(JIRA_CONFIG)" && \
+	printf "\n\n>>> Jira ticket created successfully\n" || \
+	echo ">>> ERROR: Something went wrong, Jira ticket may not have been created" || exit 1
 # {"fields" : { "project": { "key": board}, "summary": summary, "issuetype": {"name" : "Task"},  "reporter":{"name":scruffy_username}, "assignee":{"name":assignee}, "priority":{"name": "Major"}, "description" : message}}
 
+jira-create:
+	if [ ! -e "$(JIRA_CONFIG)" ]; then \
+	project=$$(python -c 'import json; print(json.load(open("$(CONFIG)"))["project"])') && \
+	$(MAKE) $(JIRA_CONFIG) PROJECT=$$project ; \
+	fi
+
 # send a message that the pipeline started
-jira-started: $(JIRA_KEY)
-	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+jira-started: $(JIRA_CONFIG)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "Content-Type: application/json" \
 	-X POST \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
@@ -185,8 +198,8 @@ jira-started: $(JIRA_KEY)
 	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
 
 # send a message that the pipeline completed successfully
-jira-success: $(JIRA_KEY)
-	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+jira-success: $(JIRA_CONFIG)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "Content-Type: application/json" \
 	-X POST \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
@@ -194,8 +207,8 @@ jira-success: $(JIRA_KEY)
 	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
 
 # send a message that the pipeline failed
-jira-failed: $(JIRA_KEY)
-	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+jira-failed: $(JIRA_CONFIG)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "Content-Type: application/json" \
 	-X POST \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
@@ -203,8 +216,8 @@ jira-failed: $(JIRA_KEY)
 	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
 
 # upload mapping files to the Jira
-jira-upload: $(JIRA_KEY)
-	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_KEY)')); print(data['key'])") && \
+jira-upload: $(JIRA_CONFIG)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "X-Atlassian-Token: nocheck" \
 	-X POST \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
