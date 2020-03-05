@@ -13,3 +13,4 @@ tempo/bamMapping.tsv
 tempo/fileTracking.tsv
 tempo/output/
 tempo/.submitted
+config.json
