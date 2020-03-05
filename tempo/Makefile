@@ -5,7 +5,9 @@ TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
 EMAIL_USER:=$(shell whoami)
 EMAIL_HOST:=mskcc.org
 EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
-CONFIG:=../config.json
+EXTERNAL_CONFIG:=../config.json
+CONFIG_TEMPLATE:=.config.json
+CONFIG_JSON:=config.json
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
 export NXF_ANSI_LOG:=false
 export NXF_VER:=19.10.0
@@ -37,8 +39,17 @@ tempo:
 $(LOG_DIR):
 	@mkdir -p "$(LOG_DIR)"
 
+# initialize the local dir for pipeline execution
 init: ./nextflow tempo $(LOG_DIR)
 
+# save a local config file so we can more easily retrieve some execution values later
+$(CONFIG_JSON): $(CONFIG_TEMPLATE)
+	cp "$(CONFIG_TEMPLATE)" "$(CONFIG_JSON)"
+
+# TODO: come up with a better way of handling this; wish we could use jq but its not installed by default...
+config: $(CONFIG_JSON)
+	@[ -n "$(TIMESTAMP)" ] && sed -i -e 's|timestamp_goes_here|$(TIMESTAMP)|g' $(CONFIG_JSON) || :
+	@[ -n "$(LOG_DIR)" ] && sed -i -e 's|log_dir_goes_here|$(LOG_DIR)|g' $(CONFIG_JSON) || :
 
 # ~~~~~ RUN ~~~~~ #
 MAPPING_TSV:=$(CURDIR)/mapping.tsv
@@ -110,6 +121,7 @@ test: init
 # NOTE: Nextflow locks itself from concurrent instances but need to lock against multiple 'make submit'
 # catches 'bkill' commands and propagates them up to Nextflow for clean shutdown
 SUBMIT_LOCKFILE:=$(CURDIR)/.submitted
+PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
 # memory usage; mem (GB) * cpus
 SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
@@ -133,12 +145,16 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	@echo 'make $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make config jira-started jira-upload $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+
 .PHONY: $(SUB_SCRIPT)
+# ; echo $$? > $(PIPELINE_EXITCODE_FILE)
+# @echo 'make jira-check-exit-state' >> $(SUB_SCRIPT)
+# TODO: get this ^ to work so we can catch the pipeline exit code and store it for later evaluation
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
 JOB_ID_FILE:=job.id
-submit: init
+submit: init $(MAPPING_TSV) $(PAIRING_TSV)
 	@if [ -e "$(SUBMIT_LOCKFILE)" ]; then \
 	echo ">>> ERROR: Workflow locked by $(SUBMIT_LOCKFILE); has an instance of the pipeline has already been submitted?"; exit 1 ; \
 	else \
@@ -160,6 +176,7 @@ kill:
 
 # ~~~~~ JIRA INTEGRATION ~~~~~ #
 JIRA_CONFIG:=$(CURDIR)/jira.json
+JIRA_MESSAGE:=body.json
 JIRA_CREDENTIALS_FILE:=/juno/work/ci/roslin-internal-services/Connect.txt
 JIRA_USERNAME:=$(shell head -1 $(JIRA_CREDENTIALS_FILE))
 JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
@@ -168,7 +185,7 @@ JIRA_PROJ:=CT
 PROJECT:=
 # make sure ../config.json exists from deploy step in order to retrieve project
 check-config:
-	if [ ! -e "$(CONFIG)" ]; then echo ">>> ERROR: Config file $(CONFIG) does not exist; was this project created with 'make deploy'?" ; exit 1 ; fi
+	if [ ! -e "$(EXTERNAL_CONFIG)" ]; then echo ">>> ERROR: Config file $(EXTERNAL_CONFIG) does not exist; was this project created with 'make deploy'?" ; exit 1 ; fi
 
 # create a new Jira issue on the 'CT' board for this project
 $(JIRA_CONFIG): check-config
@@ -183,13 +200,13 @@ $(JIRA_CONFIG): check-config
 # {"fields" : { "project": { "key": board}, "summary": summary, "issuetype": {"name" : "Task"},  "reporter":{"name":scruffy_username}, "assignee":{"name":assignee}, "priority":{"name": "Major"}, "description" : message}}
 
 jira-create:
-	if [ ! -e "$(JIRA_CONFIG)" ]; then \
-	project=$$(python -c 'import json; print(json.load(open("$(CONFIG)"))["project"])') && \
+	@if [ ! -e "$(JIRA_CONFIG)" ]; then \
+	project=$$(python -c 'import json; print(json.load(open("$(EXTERNAL_CONFIG)"))["project"])') && \
 	$(MAKE) $(JIRA_CONFIG) PROJECT=$$project ; \
 	fi
 
 # send a message that the pipeline started
-jira-started: $(JIRA_CONFIG)
+jira-started:
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "Content-Type: application/json" \
 	-X POST \
@@ -197,26 +214,8 @@ jira-started: $(JIRA_CONFIG)
 	--data '{"body":"Started running pipeline in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
 	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
 
-# send a message that the pipeline completed successfully
-jira-success: $(JIRA_CONFIG)
-	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	curl -H "Content-Type: application/json" \
-	-X POST \
-	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
-	--data '{"body":"Pipeline finished successfully in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
-	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
-
-# send a message that the pipeline failed
-jira-failed: $(JIRA_CONFIG)
-	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	curl -H "Content-Type: application/json" \
-	-X POST \
-	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
-	--data '{"body":"Pipeline failed in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
-	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
-
 # upload mapping files to the Jira
-jira-upload: $(JIRA_CONFIG)
+jira-upload:
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "X-Atlassian-Token: nocheck" \
 	-X POST \
@@ -225,6 +224,32 @@ jira-upload: $(JIRA_CONFIG)
 	-F "file=@$(PAIRING_TSV)" \
 	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/attachments
 
+# check the exit status of the pipeline and send it to Jira
+jira-check-exit-state: $(PIPELINE_EXITCODE_FILE)
+	code=$$(head -1 $(PIPELINE_EXITCODE_FILE)) && \
+	if [ $$code == "0" ]; then $(MAKE) jira-success ; else $(MAKE) jira-failed; fi
+
+# send a message that the pipeline completed successfully
+jira-success:
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
+	log_dir=$$(python -c 'import json; print(json.load(open("$(CONFIG_JSON)"))["log_dir"])') && \
+	python -c "import json; json.dump({'body':'Pipeline finished successfully in directory:\n$(CURDIR)\n\nlog dir:\n$$log_dir\n\nNextflow log:\n$(NXF_LOG)'}, open('$(JIRA_MESSAGE)', 'w'))" && \
+	curl -H "Content-Type: application/json" \
+	-X POST \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	--data @$(JIRA_MESSAGE) \
+	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+
+# send a message that the pipeline failed
+jira-failed:
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
+	log_dir=$$(python -c 'import json; print(json.load(open("$(CONFIG_JSON)"))["log_dir"])') && \
+	python -c "import json; json.dump({'body':'Pipeline failed in directory:\n$(CURDIR)\n\nlog dir:\n$$log_dir\n\nNextflow log:\n$(NXF_LOG)'}, open('$(JIRA_MESSAGE)', 'w'))" && \
+	curl -H "Content-Type: application/json" \
+	-X POST \
+	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
+	--data @$(JIRA_MESSAGE) \
+	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
 
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated

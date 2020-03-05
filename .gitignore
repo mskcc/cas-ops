@@ -14,3 +14,5 @@ tempo/fileTracking.tsv
 tempo/output/
 tempo/.submitted
 config.json
+*.exitcode
+*body.json
