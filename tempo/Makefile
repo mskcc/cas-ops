@@ -100,6 +100,7 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
+	set +e ; \
 	nextflow -log "$(NXF_LOG)" \
 	run tempo/pipeline.nf \
 	-resume \
@@ -113,9 +114,12 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-with-report "$(NXF_REPORT)" \
 	-with-timeline "$(NXF_TIMELINE)" \
 	-with-trace "$(NXF_TRACE)" \
-	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! && \
-	echo "$$nxf_pid" > "$(NXF_PID_FILE)" && \
-	wait %1 ; echo $$? > "$(PIPELINE_EXITCODE_FILE)"
+	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! ; \
+	echo "WRITING PID $$nxf_pid" ; \
+	echo "$$nxf_pid" > "$(NXF_PID_FILE)" ; \
+	echo "WATING FOR PID $$nxf_pid" ; \
+	wait $$nxf_pid ; exitcode=$$? ; \
+	echo "EXIT CODE IS:$$exitcode"; echo $$exitcode > "$(PIPELINE_EXITCODE_FILE)"
 
 test: init
 	source "$(ENV)" ; \
@@ -143,14 +147,14 @@ SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=120:00
 SUB_SCRIPT:=submit.lsf.sh
-RECIPE:=jira-started jira-upload run-bg jira-check-exit-state
+RECIPE:=jira-started jira-upload run-bg
 $(SUB_SCRIPT):
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
 	@echo '#BSUB -n $(SUB_CPUS)' >> $(SUB_SCRIPT)
 	@echo '#BSUB -R "$(SUB_MEM_ARG)"' >> $(SUB_SCRIPT)
 	@echo '#BSUB -oo $(LOG_DIR)/%J.log' >> $(SUB_SCRIPT)
-	@echo 'set -eux' >> $(SUB_SCRIPT)
+	@echo 'set -x' >> $(SUB_SCRIPT)
 	@echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
 	@echo 'touch $(SUBMIT_LOCKFILE)' >> $(SUB_SCRIPT)
 	@echo 'get_pid(){ head -1 $(NXF_PID_FILE); }' >> $(SUB_SCRIPT)
@@ -162,6 +166,8 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
 	@echo 'make config $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make jira-check-exit-state TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+
 .PHONY: $(SUB_SCRIPT)
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
