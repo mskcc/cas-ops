@@ -11,6 +11,8 @@ Then submit the pipeline with:
 
 make submit
 
+The default submission recipe will update the Jira ticket on pipeline start and finish
+
 endef
 export help
 help:
@@ -20,13 +22,13 @@ help:
 SHELL:=/bin/bash
 UNAME:=$(shell uname)
 HOSTNAME:=$(shell hostname)
-TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
+export TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
 EMAIL_USER:=$(shell whoami)
 EMAIL_HOST:=mskcc.org
 EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
-EXTERNAL_CONFIG:=../config.json
+PARENT_CONFIG:=../config.json
 CONFIG_TEMPLATE:=.config.json
-CONFIG_JSON:=config.json
+export CONFIG_JSON:=config.json
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
 export NXF_ANSI_LOG:=false
 export NXF_VER:=19.10.0
@@ -61,19 +63,14 @@ $(LOG_DIR):
 # initialize the local dir for pipeline execution
 init: ./nextflow tempo $(LOG_DIR)
 
-# save a local config file so we can more easily retrieve some execution values later
-$(CONFIG_JSON): $(CONFIG_TEMPLATE)
-	cp "$(CONFIG_TEMPLATE)" "$(CONFIG_JSON)"
-
-# TODO: come up with a better way of handling this; wish we could use jq but its not installed by default...
-config: $(CONFIG_JSON)
-	@[ -n "$(TIMESTAMP)" ] && sed -i -e 's|timestamp_goes_here|$(TIMESTAMP)|g' $(CONFIG_JSON) || :
-	@[ -n "$(LOG_DIR)" ] && sed -i -e 's|log_dir_goes_here|$(LOG_DIR)|g' $(CONFIG_JSON) || :
+# create a local config file to record environment variables such as timestamp and log dirs
+config:
+	python config.py
 
 # ~~~~~ RUN ~~~~~ #
-MAPPING_TSV:=$(CURDIR)/mapping.tsv
-PAIRING_TSV:=$(CURDIR)/pairing.tsv
-OUTPUT_DIR:=$(CURDIR)/output
+export MAPPING_TSV:=$(CURDIR)/mapping.tsv
+export PAIRING_TSV:=$(CURDIR)/pairing.tsv
+export OUTPUT_DIR:=$(CURDIR)/output
 
 # run in the current process
 run: init $(MAPPING_TSV) $(PAIRING_TSV)
@@ -165,11 +162,7 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
 	@echo 'make config $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
-
 .PHONY: $(SUB_SCRIPT)
-# ; echo $$? > $(PIPELINE_EXITCODE_FILE)
-# @echo 'make jira-check-exit-state' >> $(SUB_SCRIPT)
-# TODO: get this ^ to work so we can catch the pipeline exit code and store it for later evaluation
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
 JOB_ID_FILE:=job.id
@@ -201,10 +194,11 @@ JIRA_USERNAME:=$(shell head -1 $(JIRA_CREDENTIALS_FILE))
 JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
 JIRA_URL:=http://plvpipetrack1.mskcc.org:8090
 JIRA_PROJ:=CT
+JIRA_ISSUE:=
 PROJECT:=
 # make sure ../config.json exists from deploy step in order to retrieve project
 check-config:
-	if [ ! -e "$(EXTERNAL_CONFIG)" ]; then echo ">>> ERROR: Config file $(EXTERNAL_CONFIG) does not exist; was this project created with 'make deploy'?" ; exit 1 ; fi
+	if [ ! -e "$(PARENT_CONFIG)" ]; then echo ">>> ERROR: Config file $(PARENT_CONFIG) does not exist; was this project created with 'make deploy'?" ; exit 1 ; fi
 
 # create a new Jira issue on the 'CT' board for this project
 $(JIRA_CONFIG): check-config
@@ -220,18 +214,15 @@ $(JIRA_CONFIG): check-config
 
 jira-create:
 	@if [ ! -e "$(JIRA_CONFIG)" ]; then \
-	project=$$(python -c 'import json; print(json.load(open("$(EXTERNAL_CONFIG)"))["project"])') && \
+	project=$$(python -c 'import json; print(json.load(open("$(PARENT_CONFIG)"))["project"])') && \
 	$(MAKE) $(JIRA_CONFIG) PROJECT=$$project ; \
 	fi
 
 # send a message that the pipeline started
 jira-started:
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	curl -H "Content-Type: application/json" \
-	-X POST \
-	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
-	--data '{"body":"Started running pipeline in directory:\n$(CURDIR)\n\nlog dir:\n$(LOG_DIR)\n\nNextflow log:\n$(NXF_LOG)"}' \
-	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+	message.py started > "$(JIRA_MESSAGE)" && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
 
 # upload mapping files to the Jira
 jira-upload:
@@ -251,24 +242,21 @@ jira-check-exit-state: $(PIPELINE_EXITCODE_FILE)
 # send a message that the pipeline completed successfully
 jira-success:
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	log_dir=$$(python -c 'import json; print(json.load(open("$(CONFIG_JSON)"))["log_dir"])') && \
-	python -c "import json; json.dump({'body':'Pipeline finished successfully in directory:\n$(CURDIR)\n\nlog dir:\n$$log_dir\n\nNextflow log:\n$(NXF_LOG)'}, open('$(JIRA_MESSAGE)', 'w'))" && \
-	curl -H "Content-Type: application/json" \
-	-X POST \
-	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
-	--data @$(JIRA_MESSAGE) \
-	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+	message.py success > "$(JIRA_MESSAGE)" && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
 
 # send a message that the pipeline failed
 jira-failed:
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	log_dir=$$(python -c 'import json; print(json.load(open("$(CONFIG_JSON)"))["log_dir"])') && \
-	python -c "import json; json.dump({'body':'Pipeline failed in directory:\n$(CURDIR)\n\nlog dir:\n$$log_dir\n\nNextflow log:\n$(NXF_LOG)'}, open('$(JIRA_MESSAGE)', 'w'))" && \
+	message.py failed > "$(JIRA_MESSAGE)" && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
+
+jira-comment: $(JIRA_MESSAGE)
 	curl -H "Content-Type: application/json" \
 	-X POST \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
 	--data @$(JIRA_MESSAGE) \
-	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/comment
+	$(JIRA_URL)/rest/api/2/issue/$(JIRA_ISSUE)/comment
 
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated
