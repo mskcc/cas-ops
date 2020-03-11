@@ -2,6 +2,12 @@
 
 Scripts to run CAS analytics tasks
 
+See the 'help' text in the Makefile for the most up to date instructions;
+
+```
+make help
+```
+
 ## Usage
 
 Clone this repo:
