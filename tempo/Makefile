@@ -1,3 +1,22 @@
+define help
+This is the Makefile for CAS-OPS Tempo analysis
+
+This directory should have been 'deployed' from a copy of the Makefile in the parent directory.
+
+Create a Jira ticket with:
+
+make jira-create
+
+Then submit the pipeline with:
+
+make submit
+
+endef
+export help
+help:
+	@printf "$$help"
+.PHONY : help
+
 SHELL:=/bin/bash
 UNAME:=$(shell uname)
 HOSTNAME:=$(shell hostname)
@@ -99,7 +118,7 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-with-trace "$(NXF_TRACE)" \
 	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! && \
 	echo "$$nxf_pid" > "$(NXF_PID_FILE)" && \
-	wait "$$nxf_pid"
+	wait %1 ; echo $$? > "$(PIPELINE_EXITCODE_FILE)"
 
 test: init
 	source "$(ENV)" ; \
@@ -127,7 +146,7 @@ SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=120:00
 SUB_SCRIPT:=submit.lsf.sh
-RECIPE:=run-bg
+RECIPE:=jira-started jira-upload run-bg jira-check-exit-state
 $(SUB_SCRIPT):
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
@@ -145,7 +164,7 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	@echo 'make config jira-started jira-upload $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make config $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 
 .PHONY: $(SUB_SCRIPT)
 # ; echo $$? > $(PIPELINE_EXITCODE_FILE)
