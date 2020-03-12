@@ -83,7 +83,6 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-profile juno \
 	--genome 'GRCh37' \
 	--somatic \
-	--germline \
 	--mapping "$(MAPPING_TSV)" \
 	--pairing "$(PAIRING_TSV)" \
 	--outDir "$(OUTPUT_DIR)" \
@@ -107,7 +106,6 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-profile juno \
 	--genome 'GRCh37' \
 	--somatic \
-	--germline \
 	--mapping "$(MAPPING_TSV)" \
 	--pairing "$(PAIRING_TSV)" \
 	--outDir "$(OUTPUT_DIR)" \
@@ -129,7 +127,7 @@ test: init
 	--pairing tempo/test_inputs/local/full_test_pairing.tsv \
 	-profile test_singularity \
 	--outDir results \
-	--somatic --germline --QC --aggregate \
+	--somatic --QC --aggregate \
 	-with-report "$(NXF_REPORT)" \
 	-with-timeline "$(NXF_TIMELINE)" \
 	-with-trace "$(NXF_TRACE)" & nxf_pid=$$! && \
