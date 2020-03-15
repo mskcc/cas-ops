@@ -88,7 +88,8 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV)
 	--outDir "$(OUTPUT_DIR)" \
 	-with-report "$(NXF_REPORT)" \
 	-with-timeline "$(NXF_TIMELINE)" \
-	-with-trace "$(NXF_TRACE)"
+	-with-trace "$(NXF_TRACE)" \
+	-process.clusterOptions='-sla CMOPI'
 	# | \
 	# tee -a "$(STDOUT_LOG)"
 
@@ -112,6 +113,7 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-with-report "$(NXF_REPORT)" \
 	-with-timeline "$(NXF_TIMELINE)" \
 	-with-trace "$(NXF_TRACE)" \
+	-process.clusterOptions='-sla CMOPI' \
 	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! ; \
 	echo "WRITING PID $$nxf_pid" ; \
 	echo "$$nxf_pid" > "$(NXF_PID_FILE)" ; \
