@@ -13,13 +13,27 @@ import json
 CONFIG_JSON = os.environ['CONFIG_JSON'] # required; get from Makefile enviornment
 # CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
 config = json.load(open(CONFIG_JSON))
-nextflow_log = config['nextflow_log']
-log_dir = config['log_dir']
-pipeline_dir = config['pipeline_dir']
-lsf_log = config['lsf_log']
-lsf_jobid = config['lsf_jobid']
+nextflow_log = config.get('nextflow_log')
+log_dir = config.get('log_dir')
+pipeline_dir = config.get('pipeline_dir')
+lsf_log = config.get('lsf_log')
+lsf_jobid = config.get('lsf_jobid')
+project = config.get('project')
+pipeline = config.get('pipeline')
+version = config.get('version')
+
 
 # pre-build some common message snippets to be used later
+project_pipeline_version_message = """
+Project: {project}
+Pipeline: {pipeline}
+Version: {version}
+""".format(
+project = project,
+pipeline = pipeline,
+version = version
+)
+
 lsf_jobid_message = """
 LSF job id: {lsf_jobid}
 """.format(lsf_jobid = lsf_jobid)
@@ -44,6 +58,7 @@ def started():
     message = """Pipeline started in directory:
 {pipeline_dir}
 
+{project_pipeline_version_message}
 {lsf_jobid_message}
 
 {log_dir_message}
@@ -53,6 +68,7 @@ def started():
 {nextflow_log_message}
 """.format(
     pipeline_dir = pipeline_dir,
+    project_pipeline_version_message = project_pipeline_version_message,
     lsf_jobid_message = lsf_jobid_message,
     log_dir_message = log_dir_message,
     lsf_log_message = lsf_log_message,

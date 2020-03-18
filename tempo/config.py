@@ -11,7 +11,8 @@ import json
 
 # get environment variables
 # required:
-CONFIG_JSON = os.environ['CONFIG_JSON']
+CONFIG_JSON = os.environ['CONFIG_JSON'] # output file
+PARENT_CONFIG = os.environ['PARENT_CONFIG'] # some extra inputs
 # optional:
 TIMESTAMP = os.environ.get('TIMESTAMP')
 LOG_DIR = os.environ.get('LOG_DIR')
@@ -23,6 +24,11 @@ LSB_JOBID = os.environ.get('LSB_JOBID')
 LSB_OUTPUTFILE = os.environ.get('LSB_OUTPUTFILE')
 CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
 
+parent_config_data = json.load(open(PARENT_CONFIG))
+project = parent_config_data.get('project')
+pipeline = parent_config_data.get('pipeline')
+version = parent_config_data.get('version')
+
 config = {
 "timestamp": TIMESTAMP,
 "log_dir": LOG_DIR,
@@ -32,7 +38,10 @@ config = {
 "output_dir": OUTPUT_DIR,
 "lsf_jobid": LSB_JOBID,
 "lsf_log": LSB_OUTPUTFILE,
-"pipeline_dir": CURDIR
+"pipeline_dir": CURDIR,
+'pipeline': pipeline,
+'project': project,
+'version': version
 }
 
 
