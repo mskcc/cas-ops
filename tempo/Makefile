@@ -30,7 +30,8 @@ PARENT_CONFIG:=../config.json
 CONFIG_TEMPLATE:=.config.json
 export CONFIG_JSON:=config.json
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
-export NXF_ANSI_LOG:=false
+# export NXF_ANSI_LOG:=false
+export NXF_ANSI_LOG:=true
 export NXF_VER:=19.10.0
 export NXF_WORK:=$(CURDIR)/work
 export NXF_PID_FILE:=$(CURDIR)/.nextflow.pid
@@ -81,6 +82,8 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV)
 	run tempo/pipeline.nf \
 	-resume \
 	-profile juno \
+	--aggregate \
+	--QC \
 	--genome 'GRCh37' \
 	--somatic \
 	--mapping "$(MAPPING_TSV)" \
@@ -105,6 +108,8 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	run tempo/pipeline.nf \
 	-resume \
 	-profile juno \
+	--aggregate \
+	--QC \
 	--genome 'GRCh37' \
 	--somatic \
 	--mapping "$(MAPPING_TSV)" \
