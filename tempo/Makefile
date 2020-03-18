@@ -171,8 +171,8 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	@echo 'make config jira-started jira-upload $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
-	@echo 'make jira-check-exit-state TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make config jira-started jira-upload-mapping jira-upload-pairing $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make jira-check-exit-state jira-upload-nextflow-report TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 
 .PHONY: $(SUB_SCRIPT)
 
@@ -236,15 +236,27 @@ jira-started:
 	message.py started > "$(JIRA_MESSAGE)" && \
 	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
 
-# upload mapping files to the Jira
+# upload files to the Jira
+JIRA_UPLOAD_FILE:=
 jira-upload:
+	@if [ ! -e "$(JIRA_UPLOAD_FILE)" ]; then echo "ERROR: File does not exist; $(JIRA_UPLOAD_FILE)"; exit 0; fi
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	curl -H "X-Atlassian-Token: nocheck" \
 	-X POST \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
-	-F "file=@$(MAPPING_TSV)" \
-	-F "file=@$(PAIRING_TSV)" \
+	-F "file=@$(JIRA_UPLOAD_FILE)" \
 	$(JIRA_URL)/rest/api/2/issue/$$jira_issue/attachments
+
+jira-upload-mapping: $(MAPPING_TSV)
+	$(MAKE) jira-upload JIRA_UPLOAD_FILE=$(MAPPING_TSV)
+
+jira-upload-pairing: $(PAIRING_TSV)
+	$(MAKE) jira-upload JIRA_UPLOAD_FILE=$(PAIRING_TSV)
+
+# TODO: should this exit with 1 or 0? Set 0 for now because dont want it to block downstream tasks
+jira-upload-nextflow-report:
+	if [ ! -e "$(NXF_REPORT)" ]; then echo "ERROR: Nextflow report does not exist; $(NXF_REPORT)"; exit 0; fi
+	$(MAKE) jira-upload JIRA_UPLOAD_FILE=$(NXF_REPORT)
 
 # check the exit status of the pipeline and send it to Jira
 jira-check-exit-state: $(PIPELINE_EXITCODE_FILE)
