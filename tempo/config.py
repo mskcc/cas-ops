@@ -21,6 +21,7 @@ PAIRING_TSV = os.environ.get('PAIRING_TSV')
 OUTPUT_DIR = os.environ.get('OUTPUT_DIR')
 LSB_JOBID = os.environ.get('LSB_JOBID')
 LSB_OUTPUTFILE = os.environ.get('LSB_OUTPUTFILE')
+CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
 
 config = {
 "timestamp": TIMESTAMP,
@@ -30,7 +31,8 @@ config = {
 "pairing_tsv": PAIRING_TSV,
 "output_dir": OUTPUT_DIR,
 "lsf_jobid": LSB_JOBID,
-"lsf_log": LSB_OUTPUTFILE
+"lsf_log": LSB_OUTPUTFILE,
+"pipeline_dir": CURDIR
 }
 
 

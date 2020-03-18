@@ -99,6 +99,7 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV)
 # run in the background; capture Nextflow process ID and save to file
 # use this for running inside an LSF job where you need to pass
 # KILL signal to Nextflow for clean shutdown
+# make sure set -e is not set because that causes exit after 'wait' on failed pipeline
 run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
@@ -152,7 +153,7 @@ SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=120:00
 SUB_SCRIPT:=submit.lsf.sh
-RECIPE:=jira-started jira-upload run-bg
+RECIPE:=run-bg
 $(SUB_SCRIPT):
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
@@ -170,7 +171,7 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	@echo 'make config $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make config jira-started jira-upload $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 	@echo 'make jira-check-exit-state TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 
 .PHONY: $(SUB_SCRIPT)

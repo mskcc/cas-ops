@@ -9,57 +9,88 @@ import os
 import sys
 import json
 
+# load the JSON and get some values
 CONFIG_JSON = os.environ['CONFIG_JSON'] # required; get from Makefile enviornment
-CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
+# CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
 config = json.load(open(CONFIG_JSON))
 nextflow_log = config['nextflow_log']
 log_dir = config['log_dir']
+pipeline_dir = config['pipeline_dir']
+lsf_log = config['lsf_log']
+lsf_jobid = config['lsf_jobid']
 
-def started():
-    message = """Pipeline started in directory:
-{CURDIR}
+# pre-build some common message snippets to be used later
+lsf_jobid_message = """
+LSF job id: {lsf_jobid}
+""".format(lsf_jobid = lsf_jobid)
 
+log_dir_message = """
 log dir:
 {log_dir}
+""".format(log_dir = log_dir)
 
+nextflow_log_message = """
 Nextflow log:
 {nextflow_log}
+""".format(nextflow_log = nextflow_log)
+
+lsf_log_message = """
+LSF log:
+{lsf_log}
+""".format(lsf_log = lsf_log)
+
+# functions to return message body text
+def started():
+    message = """Pipeline started in directory:
+{pipeline_dir}
+
+{lsf_jobid_message}
+
+{log_dir_message}
+
+{lsf_log_message}
+
+{nextflow_log_message}
 """.format(
-    CURDIR = CURDIR,
-    log_dir = log_dir,
-    nextflow_log = nextflow_log
+    pipeline_dir = pipeline_dir,
+    lsf_jobid_message = lsf_jobid_message,
+    log_dir_message = log_dir_message,
+    lsf_log_message = lsf_log_message,
+    nextflow_log_message = nextflow_log_message
     )
     return(message)
 
 def success():
     message = """Pipeline finished successfully in directory:
-{CURDIR}
+{pipeline_dir}
 
-log dir:
-{log_dir}
+{log_dir_message}
 
-Nextflow log:
-{nextflow_log}
+{lsf_log_message}
+
+{nextflow_log_message}
 """.format(
-    CURDIR = CURDIR,
-    log_dir = log_dir,
-    nextflow_log = nextflow_log
+    pipeline_dir = pipeline_dir,
+    log_dir_message = log_dir_message,
+    lsf_log_message = lsf_log_message,
+    nextflow_log_message = nextflow_log_message
     )
     return(message)
 
 def failed():
     message = """Pipeline failed in directory:
-{CURDIR}
+{pipeline_dir}
 
-log dir:
-{log_dir}
+{log_dir_message}
 
-Nextflow log:
-{nextflow_log}
+{lsf_log_message}
+
+{nextflow_log_message}
 """.format(
-    CURDIR = CURDIR,
-    log_dir = log_dir,
-    nextflow_log = nextflow_log
+    pipeline_dir = pipeline_dir,
+    log_dir_message = log_dir_message,
+    lsf_log_message = lsf_log_message,
+    nextflow_log_message = nextflow_log_message
     )
     return(message)
 
