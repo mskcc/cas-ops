@@ -172,7 +172,7 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
 	@echo 'make config jira-started jira-upload-mapping jira-upload-pairing $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
-	@echo 'make jira-check-exit-state jira-upload-nextflow-report TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make check-errors jira-check-exit-state jira-upload-nextflow-report TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 
 .PHONY: $(SUB_SCRIPT)
 
