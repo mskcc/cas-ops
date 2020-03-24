@@ -17,12 +17,14 @@ PARENT_CONFIG = os.environ['PARENT_CONFIG'] # some extra inputs
 TIMESTAMP = os.environ.get('TIMESTAMP')
 LOG_DIR = os.environ.get('LOG_DIR')
 NXF_LOG = os.environ.get('NXF_LOG')
+NXF_TRACE = os.environ.get('NXF_TRACE')
 MAPPING_TSV = os.environ.get('MAPPING_TSV')
 PAIRING_TSV = os.environ.get('PAIRING_TSV')
 OUTPUT_DIR = os.environ.get('OUTPUT_DIR')
 LSB_JOBID = os.environ.get('LSB_JOBID')
 LSB_OUTPUTFILE = os.environ.get('LSB_OUTPUTFILE')
 CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
+PIPELINE_EXITCODE_FILE = os.environ.get('PIPELINE_EXITCODE_FILE')
 
 parent_config_data = json.load(open(PARENT_CONFIG))
 project = parent_config_data.get('project')
@@ -41,7 +43,9 @@ config = {
 "pipeline_dir": CURDIR,
 'pipeline': pipeline,
 'project': project,
-'version': version
+'version': version,
+'nextflow_trace': NXF_TRACE,
+'pipeline_exitcode': PIPELINE_EXITCODE_FILE
 }
 
 

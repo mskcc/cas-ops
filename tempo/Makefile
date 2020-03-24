@@ -147,7 +147,7 @@ test: init
 # NOTE: Nextflow locks itself from concurrent instances but need to lock against multiple 'make submit'
 # catches 'bkill' commands and propagates them up to Nextflow for clean shutdown
 SUBMIT_LOCKFILE:=$(CURDIR)/.submitted
-PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
+export PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
 # memory usage; mem (GB) * cpus
 SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
