@@ -197,6 +197,9 @@ kill:
 	elif [ -e "$(NXF_PID_FILE)" ] ; then kill "$$(head -1 $(NXF_PID_FILE))" ; \
 	fi ;
 
+export ERROR_MESSAGE:=$(CURDIR)/errors.txt
+check-errors:
+	check-for-errors.sh &> "$(ERROR_MESSAGE)"
 
 # ~~~~~ JIRA INTEGRATION ~~~~~ #
 JIRA_CONFIG:=$(CURDIR)/jira.json

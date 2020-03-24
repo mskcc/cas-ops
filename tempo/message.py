@@ -11,6 +11,7 @@ import json
 
 # load the JSON and get some values
 CONFIG_JSON = os.environ['CONFIG_JSON'] # required; get from Makefile enviornment
+ERROR_MESSAGE = os.environ.get('ERROR_MESSAGE') # text file that can hold more custom post-pipeline error checking messages
 # CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
 config = json.load(open(CONFIG_JSON))
 nextflow_log = config.get('nextflow_log')
@@ -53,6 +54,10 @@ LSF log:
 {lsf_log}
 """.format(lsf_log = lsf_log)
 
+error_message = ""
+if ERROR_MESSAGE and os.path.exists(ERROR_MESSAGE):
+    error_message = open(ERROR_MESSAGE).read()
+
 # functions to return message body text
 def started():
     message = """Pipeline started in directory:
@@ -85,11 +90,14 @@ def success():
 {lsf_log_message}
 
 {nextflow_log_message}
+
+{error_message}
 """.format(
     pipeline_dir = pipeline_dir,
     log_dir_message = log_dir_message,
     lsf_log_message = lsf_log_message,
-    nextflow_log_message = nextflow_log_message
+    nextflow_log_message = nextflow_log_message,
+    error_message = error_message
     )
     return(message)
 
@@ -102,11 +110,14 @@ def failed():
 {lsf_log_message}
 
 {nextflow_log_message}
+
+{error_message}
 """.format(
     pipeline_dir = pipeline_dir,
     log_dir_message = log_dir_message,
     lsf_log_message = lsf_log_message,
-    nextflow_log_message = nextflow_log_message
+    nextflow_log_message = nextflow_log_message,
+    error_message = error_message
     )
     return(message)
 

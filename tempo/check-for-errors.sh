@@ -43,10 +43,8 @@ set +e
 # Functions for checking for errors
 check_for_truncated_bams () {
     local search_dir="$1"
-    (
-    module load samtools/1.9
-    for i in $(find "${search_dir}" -type f -name "*.bam"); do samtools quickcheck $i; done
-    )
+    val=$( { ( module load samtools/1.9; for i in $(find "${search_dir}" -type f -name "*.bam"); do samtools quickcheck $i 2>&1 ; done; ) ; } | wc -l )
+    echo "${val}"
 }
 
 check_exit_code () {
@@ -57,7 +55,6 @@ check_exit_code () {
 
 task_breakdown () {
     local trace_file="$1"
-    echo
     echo "Pipeline Task Breakdown:"
     tail -n +2 "${trace_file}" | cut -f7 | sort | uniq -c | sed -e 's|^ *||g'
     echo
@@ -75,8 +72,14 @@ number_of_failed_retried_tasks () {
     echo "${val} Total Failed Tasks (ignored)"
 }
 
+echo ".bam files with potential errors in output dir:"
 check_for_truncated_bams "${output_dir}"
+echo
+
+echo ".bam files with potential errors in work dir:"
 check_for_truncated_bams "${work_dir}"
+echo
+
 task_breakdown "${nextflow_trace}"
 number_retried_tasks "${lsf_log}"
 number_of_failed_retried_tasks "${lsf_log}"
