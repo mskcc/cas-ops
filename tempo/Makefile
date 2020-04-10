@@ -120,7 +120,6 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-with-timeline "$(NXF_TIMELINE)" \
 	-with-trace "$(NXF_TRACE)" \
 	-process.clusterOptions='-sla CMOPI' \
-	-executor.queueSize="50" \
 	-process.scratch='false' \
 	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! ; \
 	echo "WRITING PID $$nxf_pid" ; \
@@ -153,7 +152,7 @@ export PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
 # memory usage; mem (GB) * cpus
 SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
-SUB_TIME:=120:00
+SUB_TIME:=400:00
 SUB_SCRIPT:=submit.lsf.sh
 RECIPE:=run-bg
 $(SUB_SCRIPT):
