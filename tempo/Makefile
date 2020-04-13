@@ -154,7 +154,7 @@ export PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
 # memory usage; mem (GB) * cpus
 SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
-SUB_TIME:=120:00
+SUB_TIME:=400:00
 SUB_SCRIPT:=submit.lsf.sh
 RECIPE:=run-bg
 $(SUB_SCRIPT):
