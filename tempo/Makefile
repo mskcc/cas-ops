@@ -120,6 +120,8 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	-with-timeline "$(NXF_TIMELINE)" \
 	-with-trace "$(NXF_TRACE)" \
 	-process.clusterOptions='-sla CMOPI' \
+	-process.time='72h' \
+	--pipelineDynamicTime "false" \
 	-N "$(EMAIL_ADDRESS)" & nxf_pid=$$! ; \
 	echo "WRITING PID $$nxf_pid" ; \
 	echo "$$nxf_pid" > "$(NXF_PID_FILE)" ; \
