@@ -8,6 +8,7 @@ Meant to be run from inside the Makefile
 import os
 import sys
 import json
+import calc_time
 
 # load the JSON and get some values
 CONFIG_JSON = os.environ['CONFIG_JSON'] # required; get from Makefile enviornment
@@ -22,7 +23,7 @@ lsf_jobid = config.get('lsf_jobid')
 project = config.get('project')
 pipeline = config.get('pipeline')
 version = config.get('version')
-
+nextflow_trace = config.get('nextflow_trace')
 
 # pre-build some common message snippets to be used later
 project_pipeline_version_message = """
@@ -34,6 +35,7 @@ project = project,
 pipeline = pipeline,
 version = version
 )
+
 
 lsf_jobid_message = """
 LSF job id: {lsf_jobid}
@@ -57,6 +59,16 @@ LSF log:
 error_message = ""
 if ERROR_MESSAGE and os.path.exists(ERROR_MESSAGE):
     error_message = open(ERROR_MESSAGE).read()
+
+# if the nextflow_trace file exists, then calculate the total execution time for it
+duration_message = ""
+if os.path.exists(nextflow_trace):
+    duration = calc_time.calculate_trace_duration(nextflow_trace)
+    duration_message = """
+Total Accumulated Pipeline Execution Time: {duration}
+""".format(duration = duration)
+    project_pipeline_version_message = project_pipeline_version_message + duration_message
+
 
 # functions to return message body text
 def started():
@@ -92,12 +104,15 @@ def success():
 {nextflow_log_message}
 
 {error_message}
+
+{duration_message}
 """.format(
     pipeline_dir = pipeline_dir,
     log_dir_message = log_dir_message,
     lsf_log_message = lsf_log_message,
     nextflow_log_message = nextflow_log_message,
-    error_message = error_message
+    error_message = error_message,
+    duration_message = duration_message
     )
     return(message)
 
@@ -112,12 +127,15 @@ def failed():
 {nextflow_log_message}
 
 {error_message}
+
+{duration_message}
 """.format(
     pipeline_dir = pipeline_dir,
     log_dir_message = log_dir_message,
     lsf_log_message = lsf_log_message,
     nextflow_log_message = nextflow_log_message,
-    error_message = error_message
+    error_message = error_message,
+    duration_message = duration_message
     )
     return(message)
 
