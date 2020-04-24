@@ -63,11 +63,12 @@ if ERROR_MESSAGE and os.path.exists(ERROR_MESSAGE):
 # if the nextflow_trace file exists, then calculate the total execution time for it
 duration_message = ""
 if os.path.exists(nextflow_trace):
-    duration = calc_time.calculate_trace_duration(nextflow_trace)
+    total_durations, duration_message = calc_time.calculate_trace_duration(nextflow_trace)
     duration_message = """
-Total Accumulated Pipeline Execution Time: {duration}
-""".format(duration = duration)
-    project_pipeline_version_message = project_pipeline_version_message + duration_message
+Total Accumulated Pipeline Execution Time:
+{duration_message}
+""".format(duration_message = duration_message)
+    project_pipeline_version_message += duration_message
 
 
 # functions to return message body text
