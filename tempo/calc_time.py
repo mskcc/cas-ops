@@ -5,36 +5,38 @@ Calculate total execution time from all contiguous tasks in the timeline from Ne
 requires human readable times
 
 $ ./calc_time.py trace.txt
+
+NOTE: trace.txt might not contain the failed tasks from previous runs, causing differences in total time reported
 """
 import sys
 import csv
 from datetime import datetime, timedelta
 
-def calculate_trace_duration(trace_file):
+def load_intervals(trace_file):
     """
-    Calculate total execution time from all contiguous tasks in the timeline from Nextflow trace.txt
-    requires human readable times
-
-    Parameters
-    ----------
-    trace_file: str
-        path to the Nextflow trace.txt file
-
-    Output
-    ------
-    datetime.timedelta
-        the total duration of the pipeline tasks across all runs
     """
-    intervals = set()
+    interval_sets = {}
+    # intervals = set()
 
     # load all the unqiue intervals from the trace file
     with open(trace_file) as fin:
         reader = csv.DictReader(fin, delimiter = '\t')
         for row in reader:
-            submit = datetime.strptime(row['submit'], '%Y-%m-%d %H:%M:%S.%f')
-            complete = datetime.strptime(row['complete'], '%Y-%m-%d %H:%M:%S.%f')
-            intervals.add((submit, complete))
+            try:
+                status = row['status']
+                if status not in interval_sets:
+                    interval_sets[status] = set()
+                # there might be some '-' values
+                submit = datetime.strptime(row['submit'], '%Y-%m-%d %H:%M:%S.%f')
+                complete = datetime.strptime(row['complete'], '%Y-%m-%d %H:%M:%S.%f')
+                interval_sets[status].add((submit, complete))
+            except:
+                pass
+    return(interval_sets)
 
+def calculate_interval_durations(intervals):
+    """
+    """
     # sort all the intervals by  the first value
     sorted_intervals = sorted(list(intervals), key=lambda x: x[0])
 
@@ -67,9 +69,53 @@ def calculate_trace_duration(trace_file):
     for submit, complete in merged_intervals:
         duration = complete - submit
         durations.append(duration)
+    return(durations)
 
-    total_duration = sum(durations, timedelta())
-    return(total_duration)
+def calculate_trace_duration(trace_file):
+    """
+    Calculate total execution time from all contiguous tasks in the timeline from Nextflow trace.txt
+    requires human readable times
+
+    Parameters
+    ----------
+    trace_file: str
+        path to the Nextflow trace.txt file
+
+    Output
+    ------
+    (total_durations, message)
+
+    total_durations: datetime.timedelta
+        the total duration of the pipeline tasks across all runs
+    message: str
+        pretty printed messages about the duration metrics
+    """
+    # get all the intervals per status
+    interval_sets = load_intervals(trace_file)
+
+    # get all the durations per status
+    duration_sets = {}
+    for status, intervals in interval_sets.items():
+        durations = calculate_interval_durations(intervals)
+        duration_sets[status] = durations
+
+    # get the total duration per status
+    total_durations = {}
+    for status, durations in duration_sets.items():
+        total_duration = sum(durations, timedelta())
+        total_durations[status] = total_duration
+
+    # create a message to use for printing
+    message = ""
+    for status, total_duration in total_durations.items():
+        message += """{status}: {total_duration} ({num_intervals} intervals)
+""".format(status = status, total_duration = total_duration, num_intervals = len(interval_sets[status]))
+    message += "Total: {total_duration} ({num_intervals} intervals)".format(
+    total_duration = sum([ total_duration for status, total_duration in total_durations.items() ], timedelta()),
+    num_intervals = len([ interval for status, intervals in interval_sets.items() for interval in intervals ])
+    )
+
+    return(total_durations, message)
 
 def main():
     """
@@ -77,8 +123,8 @@ def main():
     """
     args = sys.argv[1:]
     trace_file = args[0]
-    total_duration = calculate_trace_duration(trace_file)
-    print(total_duration)
+    total_durations, message = calculate_trace_duration(trace_file)
+    print(message)
 
 if __name__ == '__main__':
     main()
