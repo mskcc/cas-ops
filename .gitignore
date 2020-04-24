@@ -16,3 +16,5 @@ tempo/.submitted
 config.json
 *.exitcode
 *body.json
+*.pyc
+errors.txt
