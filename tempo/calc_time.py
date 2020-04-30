@@ -19,6 +19,15 @@ def parse_timestamp(timestamp_str):
     """
     return(datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S.%f'))
 
+def timedelta_to_string(timedelta, seconds = False):
+    """
+    Convert a timedelta object to string, optionally convert to seconds
+    """
+    if seconds == False:
+        return(str(timedelta))
+    if seconds == True:
+        return(str(timedelta.total_seconds()))
+
 def load_intervals(trace_file, sample_ids = None):
     """
     Loads all the intervals from a trace file
@@ -195,7 +204,7 @@ def calc_time_trace(**kwargs):
     total_durations, message = calculate_trace_duration(trace_file)
     print(message)
 
-def calc_time_samples_durations(trace_file, mapping_file):
+def calc_time_samples_durations(trace_file, mapping_file, seconds = False):
     """
     Calculate the contiguous time intervals for all samples in the trace file
     """
@@ -244,16 +253,22 @@ def calc_time_samples_durations(trace_file, mapping_file):
     # generate a pretty printed message about the results
     message = ""
     for sample, total_duration in total_sample_durations:
-        message += "{sample}: {total_duration}\n".format(sample = sample, total_duration = total_duration)
+        message += "{sample}: {total_duration}\n".format(
+            sample = sample,
+            total_duration = timedelta_to_string(total_duration, seconds = seconds)
+            )
     return(total_sample_durations, message)
 
 def calc_time_samples(**kwargs):
     """
     Print out the total duration per sample to console
+
+    $ ./calc_time.py samples logs/2020-04-21_12-43-46/trace.txt --seconds
     """
     trace_file = kwargs.pop('trace_file')
     mapping_file = kwargs.pop('mapping_file')
-    total_sample_durations, message = calc_time_samples_durations(trace_file, mapping_file)
+    seconds = kwargs.pop('seconds')
+    total_sample_durations, message = calc_time_samples_durations(trace_file, mapping_file, seconds)
     print(message)
 
 def main():
@@ -272,6 +287,7 @@ def main():
     trace_samples = subparsers.add_parser('samples', help = 'Calculate duration of all intervals in a trace.txt file')
     trace_samples.add_argument('trace_file', help = 'The Nextflow trace file to calculate')
     trace_samples.add_argument('mapping_file', nargs='?', default="mapping.tsv", help = 'The Tempo mapping file to read sample IDs from')
+    trace_samples.add_argument('--seconds', action = "store_true", help = 'Whether to report output in seconds or not')
     trace_samples.set_defaults(func = calc_time_samples)
 
     args = parser.parse_args()
