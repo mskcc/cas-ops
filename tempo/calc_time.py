@@ -4,7 +4,7 @@
 Calculate total execution time from all contiguous tasks in the timeline from Nextflow trace.txt
 requires human readable times
 
-$ ./calc_time.py trace.txt
+$ ./calc_time.py trace trace.txt
 
 NOTE: trace.txt might not contain the failed tasks from previous runs, causing differences in total time reported
 """

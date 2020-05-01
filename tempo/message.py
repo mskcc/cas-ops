@@ -24,6 +24,7 @@ project = config.get('project')
 pipeline = config.get('pipeline')
 version = config.get('version')
 nextflow_trace = config.get('nextflow_trace')
+mapping_tsv = config.get('mapping_tsv', "mapping.tsv")
 
 # pre-build some common message snippets to be used later
 project_pipeline_version_message = """
@@ -62,6 +63,7 @@ if ERROR_MESSAGE and os.path.exists(ERROR_MESSAGE):
 
 # if the nextflow_trace file exists, then calculate the total execution time for it
 duration_message = ""
+samples_duration_messages = ""
 if os.path.exists(nextflow_trace):
     total_durations, duration_message = calc_time.calculate_trace_duration(nextflow_trace)
     duration_message = """
@@ -69,6 +71,17 @@ Total Accumulated Pipeline Execution Time:
 {duration_message}
 """.format(duration_message = duration_message)
     project_pipeline_version_message += duration_message
+
+    # if the mapping tsv exists, then get the samples message as well
+    if os.path.exists(mapping_tsv):
+        print(mapping_tsv)
+        total_sample_durations, samples_duration_messages = calc_time.calc_time_samples_durations(
+            trace_file = nextflow_trace, mapping_file = mapping_tsv)
+        samples_duration_messages = """
+Sample Execution Time Breakdown:
+{samples_duration_messages}
+""".format(samples_duration_messages = samples_duration_messages)
+
 
 
 # functions to return message body text
@@ -107,13 +120,16 @@ def success():
 {error_message}
 
 {duration_message}
+
+{samples_duration_messages}
 """.format(
     pipeline_dir = pipeline_dir,
     log_dir_message = log_dir_message,
     lsf_log_message = lsf_log_message,
     nextflow_log_message = nextflow_log_message,
     error_message = error_message,
-    duration_message = duration_message
+    duration_message = duration_message,
+    samples_duration_messages = samples_duration_messages
     )
     return(message)
 
@@ -136,7 +152,8 @@ def failed():
     lsf_log_message = lsf_log_message,
     nextflow_log_message = nextflow_log_message,
     error_message = error_message,
-    duration_message = duration_message
+    duration_message = duration_message,
+    samples_duration_messages = samples_duration_messages
     )
     return(message)
 
