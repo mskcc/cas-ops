@@ -93,8 +93,8 @@ find "${search_dir}/" -type f -regex "^.*core\.[0-9]*" | while read item; do
             # kill_job "${lsf_id}"
         else
             # if the job is already dead, log its id so we can skip it next time
-            lsf_job_logger "${lsf_id}"
             echo "${lsf_id}" >> "$job_cache"
+            lsf_job_logger "${lsf_id}"
         fi
     # else
     #     echo "[$(timestamp)] job in cache: ${lsf_id}"
