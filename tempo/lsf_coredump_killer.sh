@@ -3,8 +3,9 @@ set -euo pipefail
 
 # This script will search for LSF core dump files and, if found, issue a kill command
 # for their parent LSF jobs, if the jobs are still running
+# It will also attempt to dump a log of the LSF job details to file
 # Usage:
-# $ ./lsf_coredump_killer.sh work
+# $ ./lsf_coredump_killer.sh /path/to/work_dir
 
 search_dir=$1
 this_dir="$(readlink -f $(dirname $0))"
@@ -73,8 +74,11 @@ lsf_job_logger() (
     local status=$?
     # exit status of 0 if 'is not found'
     if [ "${status}" -ne "0" ]; then
+        # human readable log file
         bjobs -l "${lsf_id}" > "${job_log_txt}"
-        bjobs -o "jobid stat queue user user_group queue job_name job_description project application service_class job_group job_priority rsvid esub kill_reason dependency pend_reason command pids exit_code exit_reason from_host first_host exec_host nexec_host output_dir sub_cwd exec_home exec_cwd ask_hosts alloc_slot nalloc_slot host_file exclusive nreq_slot submit_time start_time estimated_start_time specified_start_time specified_terminate_time time_left finish_time estimated_run_time ru_utime ru_stime %complete warning_action action_warning_time pendstate pend_time ependtime ipendtime effective_plimit plimit_remain cpu_used run_time idle_factor exception_status slots mem max_mem avg_mem memlimit swap swaplimit gpu_num gpu_mode j_exclusive gpu_alloc nthreads hrusage min_req_proc max_req_proc network_req filelimit corelimit stacklimit processlimit runtimelimit plimit input_file output_file error_file output_dir sub_cwd exec_home exec_cwd energy gpfsio" -json "${lsf_id}" > "${job_log_json}"
+        # parse-able log file in JSON format
+        # NOTE: might want to use jq for human reading since LSF tries to escape a lot of characters unncessarily
+        bjobs -o "jobid stat queue user user_group job_name job_description project application service_class job_group job_priority rsvid esub kill_reason dependency pend_reason command pids exit_code exit_reason from_host first_host exec_host nexec_host ask_hosts alloc_slot nalloc_slot host_file exclusive nreq_slot submit_time start_time estimated_start_time specified_start_time specified_terminate_time time_left finish_time estimated_run_time ru_utime ru_stime %complete warning_action action_warning_time pendstate pend_time ependtime ipendtime effective_plimit plimit_remain cpu_used run_time idle_factor exception_status slots mem max_mem avg_mem memlimit swap swaplimit gpu_num gpu_mode j_exclusive gpu_alloc nthreads hrusage min_req_proc max_req_proc network_req filelimit corelimit stacklimit processlimit runtimelimit plimit input_file output_file error_file output_dir sub_cwd exec_home exec_cwd energy gpfsio" -json "${lsf_id}" > "${job_log_json}"
     fi
 )
 
