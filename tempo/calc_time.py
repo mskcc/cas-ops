@@ -165,16 +165,30 @@ def calculate_trace_duration(trace_file):
         total_duration = sum(durations, timedelta())
         total_durations[status] = total_duration
 
+    # get the total duration of all non-cached tasks, start to finish of pipeline
+    total_walltime = timedelta()
+    all_statuses = [ k for k in  interval_sets.keys() if k != 'CACHED' ]
+    all_intervals = sorted([ interval for status in all_statuses for interval in interval_sets[status] ])
+    if len(all_intervals) > 1:
+        start = all_intervals[0][0]
+        end = all_intervals[-1][-1]
+        total_walltime = end - start
+
     # create a message to use for printing
     # list the time for each status type, then the total time
     message = ""
     for status, total_duration in total_durations.items():
         message += """{status}: {total_duration} ({num_intervals} intervals)
 """.format(status = status, total_duration = total_duration, num_intervals = len(interval_sets[status]))
-    message += "Total: {total_duration} ({num_intervals} intervals)".format(
+
+    # add the total duration of all contiguous intervals
+    message += "Total (all intervals): {total_duration} ({num_intervals} intervals)\n".format(
     total_duration = sum([ total_duration for status, total_duration in total_durations.items() ], timedelta()),
     num_intervals = len([ interval for status, intervals in interval_sets.items() for interval in intervals ])
     )
+
+    # add the total for the current pipeline
+    message += "Total (current pipeline): {total_walltime}".format(total_walltime = total_walltime)
 
     return(total_durations, message)
 
