@@ -131,7 +131,7 @@ def calculate_interval_durations(intervals):
         durations.append(duration)
     return(durations)
 
-def calculate_trace_duration(trace_file):
+def calculate_trace_duration(trace_file, seconds = False):
     """
     Calculate total execution time from all contiguous tasks in the timeline from Nextflow trace.txt
     requires human readable times
@@ -140,6 +140,8 @@ def calculate_trace_duration(trace_file):
     ----------
     trace_file: str
         path to the Nextflow trace.txt file
+    seconds: bool
+        whether or not to report output times in seconds
 
     Output
     ------
@@ -179,16 +181,17 @@ def calculate_trace_duration(trace_file):
     message = ""
     for status, total_duration in total_durations.items():
         message += """{status}: {total_duration} ({num_intervals} intervals)
-""".format(status = status, total_duration = total_duration, num_intervals = len(interval_sets[status]))
+""".format(status = status, total_duration = timedelta_to_string(total_duration, seconds), num_intervals = len(interval_sets[status]))
 
     # add the total duration of all contiguous intervals
+    total_duration_sum = sum([ total_duration for status, total_duration in total_durations.items() ], timedelta())
     message += "Total (all intervals): {total_duration} ({num_intervals} intervals)\n".format(
-    total_duration = sum([ total_duration for status, total_duration in total_durations.items() ], timedelta()),
+    total_duration = timedelta_to_string(total_duration_sum, seconds),
     num_intervals = len([ interval for status, intervals in interval_sets.items() for interval in intervals ])
     )
 
     # add the total for the current pipeline
-    message += "Total (current pipeline): {total_walltime}".format(total_walltime = total_walltime)
+    message += "Total (current pipeline): {total_walltime}".format(total_walltime = timedelta_to_string(total_walltime, seconds))
 
     return(total_durations, message)
 
@@ -215,7 +218,8 @@ def calc_time_trace(**kwargs):
     Total: 5 days, 3:56:59.610000 (4612 intervals)
     """
     trace_file = kwargs.pop('trace_file')
-    total_durations, message = calculate_trace_duration(trace_file)
+    seconds = kwargs.pop('seconds')
+    total_durations, message = calculate_trace_duration(trace_file, seconds)
     print(message)
 
 def calc_time_samples_durations(trace_file, mapping_file, seconds = False):
@@ -295,6 +299,7 @@ def main():
     # subparser for trace.txt calculation
     trace_file = subparsers.add_parser('trace', help = 'Calculate duration of all intervals in a trace.txt file')
     trace_file.add_argument('trace_file', help = 'The Nextflow trace file to calculate')
+    trace_file.add_argument('--seconds', action = "store_true", help = 'Whether to report output in seconds or not')
     trace_file.set_defaults(func = calc_time_trace)
 
     # subparser for per-sample time durations
