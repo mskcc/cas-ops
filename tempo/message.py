@@ -74,7 +74,6 @@ Total Accumulated Pipeline Execution Time:
 
     # if the mapping tsv exists, then get the samples message as well
     if os.path.exists(mapping_tsv):
-        print(mapping_tsv)
         total_sample_durations, samples_duration_messages = calc_time.calc_time_samples_durations(
             trace_file = nextflow_trace, mapping_file = mapping_tsv)
         samples_duration_messages = """
