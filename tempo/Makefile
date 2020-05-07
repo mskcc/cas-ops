@@ -73,12 +73,17 @@ export MAPPING_TSV:=$(CURDIR)/mapping.tsv
 export PAIRING_TSV:=$(CURDIR)/pairing.tsv
 export OUTPUT_DIR:=$(CURDIR)/output
 
+# extra configs for CAS Tempo usage
+export TEMPO_CONFIG:=$(CURDIR)/tempo.config
+
 # run in the current process
 run: init $(MAPPING_TSV) $(PAIRING_TSV)
 	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
-	nextflow -log "$(NXF_LOG)" \
+	nextflow \
+	-log "$(NXF_LOG)" \
+	-c "$(TEMPO_CONFIG)" \
 	run tempo/pipeline.nf \
 	-resume \
 	-profile juno \
@@ -105,7 +110,9 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
 	set +e ; \
-	nextflow -log "$(NXF_LOG)" \
+	nextflow \
+	-log "$(NXF_LOG)" \
+	-c "$(TEMPO_CONFIG)" \
 	run tempo/pipeline.nf \
 	-resume \
 	-profile juno \
