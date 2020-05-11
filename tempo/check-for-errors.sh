@@ -62,14 +62,14 @@ task_breakdown () {
 
 number_retried_tasks () {
     local log_file="$1"
-    local val="$(grep error "${log_file}" | grep 'Execution is retried' | wc -l)"
-    echo "${val} Total Failed Tasks (retried)"
+    local val="$(grep error "${log_file}" | grep 'Execution is retried' | sort -u | wc -l)"
+    echo "${val} Total Retried Tasks"
 }
 
 number_of_failed_retried_tasks () {
     local log_file="$1"
-    local val="$(grep error "${log_file}" | grep 'Error is ignored' | wc -l)"
-    echo "${val} Total Failed Tasks (ignored)"
+    local val="$(grep error "${log_file}" | grep 'Error is ignored' | sort -u | wc -l)"
+    echo "${val} Total Ignored Tasks"
 }
 
 echo ".bam files with potential errors in output dir:"
