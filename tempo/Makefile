@@ -110,7 +110,9 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
 	set +e ; \
-	nextflow -log "$(NXF_LOG)" \
+	nextflow \
+	-log "$(NXF_LOG)" \
+	-c "$(TEMPO_CONFIG)" \
 	run tempo/pipeline.nf \
 	-resume \
 	-profile juno \
