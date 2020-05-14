@@ -178,7 +178,7 @@ $(SUB_SCRIPT):
 	@echo 'trap nxf_kill KILL' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill TERM' >> $(SUB_SCRIPT)
 	@echo 'trap nxf_kill USR1' >> $(SUB_SCRIPT)
-	@echo 'trap nxf_kill USR2 >> $(SUB_SCRIPT)
+	@echo 'trap nxf_kill USR2' >> $(SUB_SCRIPT)
 	@echo 'trap on_term EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
 	@echo 'make config $(SUB_START_RECIPES) $(SUB_RUN_RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
