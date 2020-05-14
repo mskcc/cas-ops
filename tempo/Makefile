@@ -206,7 +206,10 @@ check-errors: $(LOG_DIR)
 
 # ~~~~~ JIRA INTEGRATION ~~~~~ #
 JIRA_CONFIG:=$(CURDIR)/jira.json
-JIRA_MESSAGE:=body.json
+JIRA_MESSAGE:=jira.body.json
+JIRA_STARTED:=$(LOG_DIR)/jira.started.json
+JIRA_SUCCESS:=$(LOG_DIR)/jira.succes.json
+JIRA_FAILED:=$(LOG_DIR)/jira.failed.json
 JIRA_CREDENTIALS_FILE:=/juno/work/ci/roslin-internal-services/Connect.txt
 JIRA_USERNAME:=$(shell head -1 $(JIRA_CREDENTIALS_FILE))
 JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
@@ -237,10 +240,10 @@ jira-create:
 	fi
 
 # send a message that the pipeline started
-jira-started:
+jira-started: $(LOG_DIR)
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	message.py started > "$(JIRA_MESSAGE)" && \
-	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
+	message.py started > "$(JIRA_STARTED)"  && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue JIRA_MESSAGE=$(JIRA_STARTED)
 
 # upload files to the Jira
 JIRA_UPLOAD_FILE:=
@@ -270,16 +273,16 @@ jira-check-exit-state: $(PIPELINE_EXITCODE_FILE)
 	if [ $$code == "0" ]; then $(MAKE) jira-success ; else $(MAKE) jira-failed; fi
 
 # send a message that the pipeline completed successfully
-jira-success:
+jira-success: $(LOG_DIR)
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	message.py success > "$(JIRA_MESSAGE)" && \
-	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
+	message.py success > "$(JIRA_SUCCESS)" && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue JIRA_MESSAGE=$(JIRA_SUCCESS)
 
 # send a message that the pipeline failed
-jira-failed:
+jira-failed: $(LOG_DIR)
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
-	message.py failed > "$(JIRA_MESSAGE)" && \
-	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue
+	message.py failed > "$(JIRA_FAILED)" && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue JIRA_MESSAGE=$(JIRA_FAILED)
 
 jira-comment: $(JIRA_MESSAGE)
 	curl -H "Content-Type: application/json" \
