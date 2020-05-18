@@ -156,6 +156,30 @@ def failed():
     )
     return(message)
 
+def killed():
+    message = """Pipeline leader job killed in directory:
+{pipeline_dir}
+
+{log_dir_message}
+
+{lsf_log_message}
+
+{nextflow_log_message}
+
+{error_message}
+
+{duration_message}
+""".format(
+    pipeline_dir = pipeline_dir,
+    log_dir_message = log_dir_message,
+    lsf_log_message = lsf_log_message,
+    nextflow_log_message = nextflow_log_message,
+    error_message = error_message,
+    duration_message = duration_message,
+    samples_duration_messages = samples_duration_messages
+    )
+    return(message)
+
 def make_body(func):
     data = {}
     data['body'] = func()
@@ -170,6 +194,8 @@ if __name__ == '__main__':
         message_func = failed
     if message_type == "started":
         message_func = started
+    if message_type == "killed":
+        message_func = killed
 
     data = make_body(message_func)
     print(json.dumps(data, indent = 4))
