@@ -163,7 +163,9 @@ SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=400:00
 SUB_SCRIPT:=submit.lsf.sh
-RECIPE:=run-bg
+SUB_RUN_RECIPE:=run-bg
+SUB_EXIT_RECIPES:=check-errors jira-check-exit-state jira-upload-nextflow-report
+SUB_START_RECIPES:=jira-started jira-upload-mapping jira-upload-pairing
 $(SUB_SCRIPT):
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
@@ -173,16 +175,15 @@ $(SUB_SCRIPT):
 	@echo 'set -x' >> $(SUB_SCRIPT)
 	@echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
 	@echo 'touch $(SUBMIT_LOCKFILE)' >> $(SUB_SCRIPT)
+	@echo 'on_term(){ echo "trap: on_term" ; rm_submit; make $(SUB_EXIT_RECIPES) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR); }' >> $(SUB_SCRIPT)
 	@echo 'get_pid(){ head -1 $(NXF_PID_FILE); }' >> $(SUB_SCRIPT)
 	@echo 'rm_submit(){ echo ">>> trap: rm_submit" ; [ -e $(SUBMIT_LOCKFILE) ] && rm -f $(SUBMIT_LOCKFILE) || : ; }' >> $(SUB_SCRIPT)
-	@echo 'wait_pid(){ local pid=$$1 ; while kill -0 $$pid; do echo waiting for process $$pid to end ; sleep 1 ; done ; }' >> $(SUB_SCRIPT)
-	@echo 'nxf_kill(){ rm_submit ; echo ">>> trap: nxf_kill" && pid=$$(get_pid) && kill $$pid && wait_pid $$pid ; }' >> $(SUB_SCRIPT)
-	@echo 'trap nxf_kill HUP' >> $(SUB_SCRIPT)
-	@echo 'trap nxf_kill INT' >> $(SUB_SCRIPT)
-	@echo 'trap nxf_kill EXIT' >> $(SUB_SCRIPT)
+	@echo 'wait_pid(){ local pid=$$1 ; while kill -0 $$pid; do echo waiting for process $$pid to end ; sleep 3 ; done ; }' >> $(SUB_SCRIPT)
+	@echo 'nxf_kill(){ echo ">>> trap: nxf_kill" && pid=$$(get_pid) && kill $$pid && wait_pid $$pid ; }' >> $(SUB_SCRIPT)
+	@echo 'trap nxf_kill HUP INT KILL TERM USR1 USR2' >> $(SUB_SCRIPT)
+	@echo 'trap on_term EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
-	@echo 'make config jira-started jira-upload-mapping jira-upload-pairing $(RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
-	@echo 'make check-errors jira-check-exit-state jira-upload-nextflow-report TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
+	@echo 'make config $(SUB_START_RECIPES) $(SUB_RUN_RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
 
 .PHONY: $(SUB_SCRIPT)
 
@@ -217,6 +218,7 @@ JIRA_MESSAGE:=jira.body.json
 JIRA_STARTED:=$(LOG_DIR)/jira.started.json
 JIRA_SUCCESS:=$(LOG_DIR)/jira.succes.json
 JIRA_FAILED:=$(LOG_DIR)/jira.failed.json
+JIRA_KILLED:=$(LOG_DIR)/jira.killed.json
 JIRA_CREDENTIALS_FILE:=/juno/work/ci/roslin-internal-services/Connect.txt
 JIRA_USERNAME:=$(shell head -1 $(JIRA_CREDENTIALS_FILE))
 JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
@@ -290,6 +292,11 @@ jira-failed: $(LOG_DIR)
 	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
 	message.py failed > "$(JIRA_FAILED)" && \
 	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue JIRA_MESSAGE=$(JIRA_FAILED)
+
+jira-killed: $(LOG_DIR)
+	@jira_issue=$$(python -c "import json; data=json.load(open('$(JIRA_CONFIG)')); print(data['key'])") && \
+	message.py killed > "$(JIRA_KILLED)" && \
+	$(MAKE) jira-comment JIRA_ISSUE=$$jira_issue JIRA_MESSAGE=$(JIRA_KILLED)
 
 jira-comment: $(JIRA_MESSAGE)
 	curl -H "Content-Type: application/json" \
