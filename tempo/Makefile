@@ -164,7 +164,7 @@ SUB_MEM_ARG:=rusage[mem=8]
 SUB_TIME:=400:00
 SUB_SCRIPT:=submit.lsf.sh
 SUB_RUN_RECIPE:=run-bg
-SUB_EXIT_RECIPES:=check-errors jira-check-exit-state jira-upload-nextflow-report
+SUB_EXIT_RECIPES:=check-errors calc_time jira-check-exit-state jira-upload-nextflow-report
 SUB_START_RECIPES:=jira-started jira-upload-mapping jira-upload-pairing
 $(SUB_SCRIPT):
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
@@ -208,9 +208,23 @@ kill:
 	elif [ -e "$(NXF_PID_FILE)" ] ; then kill "$$(head -1 $(NXF_PID_FILE))" ; \
 	fi ;
 
+# check the Tempo output and logs for potential errors, record to text file
+# the text file will be used in downstream processes for Jira messages
 export ERROR_MESSAGE:=$(LOG_DIR)/errors.txt
 check-errors: $(LOG_DIR)
 	check-for-errors.sh &> "$(ERROR_MESSAGE)"
+
+# calculate some pipeline duration metrics to log for later usages
+export TRACE_TIME_FILE:=$(LOG_DIR)/duration.trace.txt
+export TRACE_TIME_RAW_FILE:=$(LOG_DIR)/duration.trace.raw.txt
+export SAMPLES_TIME_FILE:=$(LOG_DIR)/duration.samples.txt
+export SAMPLES_TIME_RAW_FILE:=$(LOG_DIR)/duration.samples.raw.txt
+calc_time: $(LOG_DIR)
+	python calc_time.py trace "$(NXF_TRACE)" &> "$(TRACE_TIME_FILE)"
+	python calc_time.py trace --seconds "$(NXF_TRACE)" &> "$(TRACE_TIME_RAW_FILE)"
+	python calc_time.py samples "$(NXF_TRACE)" "$(MAPPING_TSV)" &> "$(SAMPLES_TIME_FILE)"
+	python calc_time.py samples --seconds "$(NXF_TRACE)" "$(MAPPING_TSV)" &> "$(SAMPLES_TIME_RAW_FILE)"
+
 
 # ~~~~~ JIRA INTEGRATION ~~~~~ #
 JIRA_CONFIG:=$(CURDIR)/jira.json
