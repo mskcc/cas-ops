@@ -171,7 +171,7 @@ $(SUB_SCRIPT):
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
 	@echo '#BSUB -n $(SUB_CPUS)' >> $(SUB_SCRIPT)
 	@echo '#BSUB -R "$(SUB_MEM_ARG)"' >> $(SUB_SCRIPT)
-	@echo '#BSUB -oo $(LOG_DIR)/%J.log' >> $(SUB_SCRIPT)
+	@echo '#BSUB -oo $(LOG_DIR)/lsf.%J.log' >> $(SUB_SCRIPT)
 	@echo 'set -x' >> $(SUB_SCRIPT)
 	@echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
 	@echo 'touch $(SUBMIT_LOCKFILE)' >> $(SUB_SCRIPT)
