@@ -12,7 +12,7 @@ import json
 # get environment variables
 # required:
 CONFIG_JSON = os.environ['CONFIG_JSON'] # output file
-PARENT_CONFIG = os.environ['PARENT_CONFIG'] # some extra inputs
+
 # optional:
 TIMESTAMP = os.environ.get('TIMESTAMP')
 LOG_DIR = os.environ.get('LOG_DIR')
@@ -25,11 +25,15 @@ LSB_JOBID = os.environ.get('LSB_JOBID')
 LSB_OUTPUTFILE = os.environ.get('LSB_OUTPUTFILE')
 CURDIR = os.environ.get('CURDIR', os.path.realpath('.'))
 PIPELINE_EXITCODE_FILE = os.environ.get('PIPELINE_EXITCODE_FILE')
+PROJECT_FILE = os.environ.get('PROJECT_FILE', "../.project") # .project file in parent dir
+TEMPO_VERSION_FILE = os.environ.get('TEMPO_VERSION_FILE', ".version") # .version
 
-parent_config_data = json.load(open(PARENT_CONFIG))
-project = parent_config_data.get('project')
-pipeline = parent_config_data.get('pipeline')
-version = parent_config_data.get('version')
+with open(PROJECT_FILE) as fin:
+    project = fin.readlines()[0].strip()
+with open(TEMPO_VERSION_FILE) as fin:
+    version = fin.readlines()[0].strip()
+pipeline = "tempo"
+
 
 config = {
 "timestamp": TIMESTAMP,
