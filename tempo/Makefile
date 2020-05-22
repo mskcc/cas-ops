@@ -58,7 +58,7 @@ export TEMPO_VERSION:=$(shell head -1 $(TEMPO_VERSION_FILE))
 tempo/.git:
 	git clone git@github.com:mskcc/tempo.git
 tempo: tempo/.git
-	cd tempo && git checkout "$(TEMPO_VERSION)"
+	@cd tempo && git checkout "$(TEMPO_VERSION)"
 .PHONY: tempo
 
 # creates the log directory for the execution instance; this should be called
@@ -110,6 +110,7 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV) $(LOG_DIR)
 # use this for running inside an LSF job where you need to pass
 # KILL signal to Nextflow for clean shutdown
 # make sure set -e is not set because that causes exit after 'wait' on failed pipeline
+export PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
 run-bg: init $(MAPPING_TSV) $(PAIRING_TSV) $(LOG_DIR)
 	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
@@ -157,12 +158,19 @@ test: init $(LOG_DIR)
 	echo "$$nxf_pid" > "$(NXF_PID_FILE)" && \
 	wait "$$nxf_pid"
 
-# create an LSF submission script
-# sets a submission lock file
+# create an LSF submission script; SUB_SCRIPT
+# - sets a submission lock file; (SUBMIT_LOCKFILE)
+# - print LSF job metadata; lsf.print-env.sh
+# - run Makefile recipes to record configs, start & monitor pipeline,
+# - nxf_kill: propagate term signals to Nextflow pipeline so it can shutdown cleanly
+# - get_pid: get the process id for the Nextflow pipeline
+# - wait_pid: wait for process to stop
+# - rm_submit: remove the lockfile (SUBMIT_LOCKFILE)
+# - exit_1: record exit status of 1 to denote failure/termination
+# - on_term: trap termination signals and run ^^^ shutdown commands and other cleanup recipes
 # NOTE: Nextflow locks itself from concurrent instances but need to lock against multiple 'make submit'
 # catches 'bkill' commands and propagates them up to Nextflow for clean shutdown
 SUBMIT_LOCKFILE:=$(CURDIR)/.submitted
-export PIPELINE_EXITCODE_FILE:=$(CURDIR)/.exitcode
 # memory usage; mem (GB) * cpus
 SUB_CPUS:=2
 SUB_MEM_ARG:=rusage[mem=8]
@@ -180,17 +188,19 @@ $(SUB_SCRIPT): $(LOG_DIR)
 	@echo 'set -x' >> $(SUB_SCRIPT)
 	@echo 'cd $(CURDIR)' >> $(SUB_SCRIPT)
 	@echo 'touch $(SUBMIT_LOCKFILE)' >> $(SUB_SCRIPT)
-	@echo 'on_term(){ echo "trap: on_term" ; rm_submit; make $(SUB_EXIT_RECIPES) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR); }' >> $(SUB_SCRIPT)
+	@echo 'exit_1(){ echo ">>> exit_1"; printf 1 > "$(PIPELINE_EXITCODE_FILE)" ; }' >> $(SUB_SCRIPT)
+	@echo 'on_kill(){ echo ">>> trap: on_kill"; nxf_kill; exit_1; }' >> $(SUB_SCRIPT)
+	@echo 'on_term(){ echo ">>> trap: on_term" ; rm_submit; make $(SUB_EXIT_RECIPES) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR); }' >> $(SUB_SCRIPT)
 	@echo 'get_pid(){ head -1 $(NXF_PID_FILE); }' >> $(SUB_SCRIPT)
 	@echo 'rm_submit(){ echo ">>> trap: rm_submit" ; [ -e $(SUBMIT_LOCKFILE) ] && rm -f $(SUBMIT_LOCKFILE) || : ; }' >> $(SUB_SCRIPT)
-	@echo 'wait_pid(){ local pid=$$1 ; while kill -0 $$pid; do echo waiting for process $$pid to end ; sleep 3 ; done ; }' >> $(SUB_SCRIPT)
-	@echo 'nxf_kill(){ echo ">>> trap: nxf_kill" && pid=$$(get_pid) && kill $$pid && wait_pid $$pid ; }' >> $(SUB_SCRIPT)
-	@echo 'trap nxf_kill HUP INT KILL TERM USR1 USR2' >> $(SUB_SCRIPT)
+	@echo 'wait_pid(){ local pid=$$1 ; while kill -0 $$pid; do echo ">>> waiting for process $$pid to end" ; sleep 3 ; done ; }' >> $(SUB_SCRIPT)
+	@echo 'nxf_kill(){ echo ">>> nxf_kill" && pid=$$(get_pid) && kill $$pid && wait_pid $$pid ; on_term; }' >> $(SUB_SCRIPT)
+	@echo 'trap on_kill HUP INT KILL TERM USR1 USR2' >> $(SUB_SCRIPT)
 	@echo 'trap on_term EXIT' >> $(SUB_SCRIPT)
 	@echo 'bash lsf.print-env.sh' >> $(SUB_SCRIPT)
 	@echo 'make config $(SUB_START_RECIPES) $(SUB_RUN_RECIPE) TIMESTAMP=$(TIMESTAMP) LOG_DIR=$(LOG_DIR)' >> $(SUB_SCRIPT)
-
 .PHONY: $(SUB_SCRIPT)
+
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
 JOB_ID_FILE:=job.id
