@@ -47,17 +47,24 @@ check-project:
 # clone a copy of the repo to the desired output location and fix the permissions
 clone:
 	@git clone --recurse "$(REMOTE)" "$(PROJECT_DIR)" && \
-	chmod -R g+rw "$(PROJECT_DIR)" && \
-	printf "\n\n>>> Project deployed to $(PROJECT_DIR)\n\n" || \
-	echo ">>> ERROR: Deploy failed for PROJECTect$(PROJECT)"
+	chmod -R g+rw "$(PROJECT_DIR)"
 
-# set up a new analysis in the desired location
+# set up a new analysis in the desired location;
+# get the pipeline version and destination directory,
+# clone the cas-ops repo into that location,
+# write out some configs to that location,
+# cd over to that location's pipeline dir,
+# run the 'make init' command there to initialize the pipeline for usage
 deploy: check-project check-pipeline
 	@version="$$(head -1 '$(PIPELINE)/.version')" && \
 	if [ -z "$(PROJECT_DIR)" ]; then project_dir="$(ROOT)/$(TIMESTAMP_DIR)/$(PROJECT)/$(PIPELINE)/$$version" ; \
 	else project_dir="$(PROJECT_DIR)" ; fi ; \
 	$(MAKE) clone PROJECT_DIR="$$project_dir" && \
-	$(MAKE) config CONFIG_JSON="$$project_dir/config.json" VERSION="$$version"
+	$(MAKE) config CONFIG_JSON="$$project_dir/config.json" VERSION="$$version" && \
+	cd "$$project_dir/$(PIPELINE)" && \
+	$(MAKE) init && \
+	printf "\n\n>>> Project deployed to $$project_dir\n\n"
+# example:
 # $ make deploy PROJECT=Proj_OCTAD PIPELINE=tempo ROOT=/juno/work/ci/trinity/runs
 # /juno/work/ci/trinity/runs/202003/05_122913/Proj_OCTAD/tempo/1.2-0-g94e134a
 
