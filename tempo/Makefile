@@ -26,6 +26,7 @@ export TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
 EMAIL_USER:=$(shell whoami)
 EMAIL_HOST:=mskcc.org
 EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
+export PROJECT_FILE:=../.project
 export PARENT_CONFIG:=../config.json
 CONFIG_TEMPLATE:=.config.json
 export CONFIG_JSON:=config.json
@@ -254,13 +255,10 @@ JIRA_PASSWORD:=$(shell tail -n +2 $(JIRA_CREDENTIALS_FILE) | head -n 1)
 JIRA_URL:=http://plvpipetrack1.mskcc.org:8090
 JIRA_PROJ:=CT
 JIRA_ISSUE:=
-PROJECT:=
-# make sure ../config.json exists from deploy step in order to retrieve project
-check-config:
-	if [ ! -e "$(PARENT_CONFIG)" ]; then echo ">>> ERROR: Config file $(PARENT_CONFIG) does not exist; was this project created with 'make deploy'?" ; exit 1 ; fi
+PROJECT:=$(shell head -1 "$(PROJECT_FILE)")
 
 # create a new Jira issue on the 'CT' board for this project
-$(JIRA_CONFIG): check-config
+$(JIRA_CONFIG): $(PROJECT_FILE)
 	@curl \
 	-u "$(JIRA_USERNAME):$(JIRA_PASSWORD)" \
 	-X POST \
@@ -271,11 +269,8 @@ $(JIRA_CONFIG): check-config
 	echo ">>> ERROR: Something went wrong, Jira ticket may not have been created" || exit 1
 # {"fields" : { "project": { "key": board}, "summary": summary, "issuetype": {"name" : "Task"},  "reporter":{"name":scruffy_username}, "assignee":{"name":assignee}, "priority":{"name": "Major"}, "description" : message}}
 
-jira-create:
-	@if [ ! -e "$(JIRA_CONFIG)" ]; then \
-	project=$$(python -c 'import json; print(json.load(open("$(PARENT_CONFIG)"))["project"])') && \
-	$(MAKE) $(JIRA_CONFIG) PROJECT=$$project ; \
-	fi
+jira-create: $(PROJECT_FILE) $(JIRA_CONFIG)
+	$(MAKE) $(JIRA_CONFIG)
 
 # send a message that the pipeline started
 jira-started: $(LOG_DIR)
