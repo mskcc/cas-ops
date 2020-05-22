@@ -19,6 +19,7 @@ help:
 SETUP_JSON:=setup.json
 CONFIG_TEMPLATE:=.config.json
 CONFIG_JSON:=config.json
+PROJECT_FILE:=.project
 PROJECT:=
 PIPELINE:=
 VERSION:=
@@ -60,10 +61,11 @@ deploy: check-project check-pipeline
 	if [ -z "$(PROJECT_DIR)" ]; then project_dir="$(ROOT)/$(TIMESTAMP_DIR)/$(PROJECT)/$(PIPELINE)/$$version" ; \
 	else project_dir="$(PROJECT_DIR)" ; fi ; \
 	$(MAKE) clone PROJECT_DIR="$$project_dir" && \
-	$(MAKE) config CONFIG_JSON="$$project_dir/config.json" VERSION="$$version" && \
+	echo '$(PROJECT)' > "$$project_dir/$(PROJECT_FILE)" && \
 	cd "$$project_dir/$(PIPELINE)" && \
 	$(MAKE) init && \
 	printf "\n\n>>> Project deployed to $$project_dir\n\n"
+
 # example:
 # $ make deploy PROJECT=Proj_OCTAD PIPELINE=tempo ROOT=/juno/work/ci/trinity/runs
 # /juno/work/ci/trinity/runs/202003/05_122913/Proj_OCTAD/tempo/1.2-0-g94e134a
