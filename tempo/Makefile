@@ -55,15 +55,19 @@ export TMPDIR=/scratch/$(shell whoami)
 export NXF_SINGULARITY_CACHEDIR=/juno/work/taylorlab/cmopipeline/singularity_images
 TEMPO_VERSION_FILE:=$(CURDIR)/.version
 export TEMPO_VERSION:=$(shell head -1 $(TEMPO_VERSION_FILE))
-tempo:
-	git clone git@github.com:mskcc/tempo.git && cd tempo && git checkout "$(TEMPO_VERSION)"
+tempo/.git:
+	git clone git@github.com:mskcc/tempo.git
+tempo: tempo/.git
+	cd tempo && git checkout "$(TEMPO_VERSION)"
 .PHONY: tempo
 
+# creates the log directory for the execution instance; this should be called
+# as a requirement for all recipes that write to log dir
 $(LOG_DIR):
 	@mkdir -p "$(LOG_DIR)"
 
 # initialize the local dir for pipeline execution
-init: ./nextflow tempo $(LOG_DIR)
+init: ./nextflow tempo
 
 # create a local config file to record environment variables such as timestamp and log dirs
 config:
@@ -78,7 +82,7 @@ export OUTPUT_DIR:=$(CURDIR)/output
 export TEMPO_CONFIG:=$(CURDIR)/tempo-1.3.config
 
 # run in the current process
-run: init $(MAPPING_TSV) $(PAIRING_TSV)
+run: init $(MAPPING_TSV) $(PAIRING_TSV) $(LOG_DIR)
 	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
@@ -106,7 +110,7 @@ run: init $(MAPPING_TSV) $(PAIRING_TSV)
 # use this for running inside an LSF job where you need to pass
 # KILL signal to Nextflow for clean shutdown
 # make sure set -e is not set because that causes exit after 'wait' on failed pipeline
-run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
+run-bg: init $(MAPPING_TSV) $(PAIRING_TSV) $(LOG_DIR)
 	[ ! -f "$(MAPPING_TSV)" ] && echo ">>> ERROR: mapping file does not exist; $(MAPPING_TSV)" && exit 1 || :
 	[ ! -f "$(PAIRING_TSV)" ] && echo ">>> ERROR: pairing file does not exist; $(PAIRING_TSV)" && exit 1 || :
 	source "$(ENV)" ; \
@@ -138,7 +142,7 @@ run-bg: init $(MAPPING_TSV) $(PAIRING_TSV)
 # -executor.queueSize="50"
 # -process.scratch='false'
 
-test: init
+test: init $(LOG_DIR)
 	source "$(ENV)" ; \
 	nextflow -log "$(NXF_LOG)" \
 	run tempo/pipeline.nf \
@@ -167,7 +171,7 @@ SUB_SCRIPT:=submit.lsf.sh
 SUB_RUN_RECIPE:=run-bg
 SUB_EXIT_RECIPES:=check-errors calc_time jira-check-exit-state jira-upload-nextflow-report
 SUB_START_RECIPES:=jira-started jira-upload-mapping jira-upload-pairing
-$(SUB_SCRIPT):
+$(SUB_SCRIPT): $(LOG_DIR)
 	@echo '#!/bin/bash' > $(SUB_SCRIPT)
 	@echo '#BSUB -W $(SUB_TIME)' >> $(SUB_SCRIPT)
 	@echo '#BSUB -n $(SUB_CPUS)' >> $(SUB_SCRIPT)
@@ -190,7 +194,7 @@ $(SUB_SCRIPT):
 
 # submit the pipeline as a job on the HPC; catch the job ID to save to file
 JOB_ID_FILE:=job.id
-submit: init $(MAPPING_TSV) $(PAIRING_TSV)
+submit: init $(MAPPING_TSV) $(PAIRING_TSV) $(LOG_DIR)
 	@if [ -e "$(SUBMIT_LOCKFILE)" ]; then \
 	echo ">>> ERROR: Workflow locked by $(SUBMIT_LOCKFILE); has an instance of the pipeline has already been submitted?"; exit 1 ; \
 	else \
