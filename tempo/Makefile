@@ -53,10 +53,11 @@ export ENV:=env.juno.sh
 # https://ccstempo.netlify.com/juno-setup.html#temporary-files
 export TMPDIR=/scratch/$(shell whoami)
 export NXF_SINGULARITY_CACHEDIR=/juno/work/taylorlab/cmopipeline/singularity_images
-export TEMPO_COMMIT:=94e134a
-export TEMPO_TAG:=1.2.0
+TEMPO_VERSION_FILE:=$(CURDIR)/.version
+export TEMPO_VERSION:=$(shell head -1 $(TEMPO_VERSION_FILE))
 tempo:
-	git clone git@github.com:mskcc/tempo.git && cd tempo && git checkout "$(TEMPO_TAG)"
+	git clone git@github.com:mskcc/tempo.git && cd tempo && git checkout "$(TEMPO_VERSION)"
+.PHONY: tempo
 
 $(LOG_DIR):
 	@mkdir -p "$(LOG_DIR)"

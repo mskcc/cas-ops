@@ -28,11 +28,17 @@ TIMESTAMP_YEARMONTH:=$(shell date +"%Y%m")
 TIMESTAMP_DAY:=$(shell date +"%d_%H%M%S")
 TIMESTAMP_DIR:=$(TIMESTAMP_YEARMONTH)/$(TIMESTAMP_DAY)
 PROJECT_DIR:=
-# make sure that 'PIPELINE' var was passed, and that it is a valid registered pipeline in the included setup.json
-check-pipeline:
-	@if [ -z "$(PIPELINE)" ]; then echo ">>> ERROR: 'PIPELINE' must be specified; 'make ... PIPELINE=<PIPELINE_id>'"; exit 1; fi ; \
-	if [ $$(python -c 'import sys, json; print(json.load(open("$(SETUP_JSON)"))["versions"].get("$(PIPELINE)"))') == "None" ]; then \
-	echo ">>> ERROR: pipeline $(PIPELINE) not in $(SETUP_JSON)" ; exit 1; fi
+
+# make sure that 'PIPELINE' var was passed, and
+# that it is a subdir in this repo, and
+# that is contains a file called ".version", which has >1 line
+check-pipeline: $(PIPELINE)
+	@if [ -z "$(PIPELINE)" ]; then echo ">>> ERROR: 'PIPELINE' must be specified; 'make ... PIPELINE=<PIPELINE_id>'"; exit 1; fi
+	@if [ ! -e "$(PIPELINE)/.version" ]; then echo ">>> ERROR: Pipeline directory '$(PIPELINE)' lacks file '.version' "; exit 1; fi
+	@if [ "$$(cat $(PIPELINE)/.version | wc -l )" -lt "1" ]; then echo ">>> ERROR: file $(PIPELINE)/.version has too few lines"; exit 1; fi
+
+test:
+	echo yes
 
 # make sure that a 'PROJECT' var was passed
 check-project:
@@ -47,7 +53,7 @@ clone:
 
 # set up a new analysis in the desired location
 deploy: check-project check-pipeline
-	@version=$$(python -c 'import json; print(json.load(open("$(SETUP_JSON)"))["versions"]["$(PIPELINE)"])') && \
+	@version="$$(head -1 '$(PIPELINE)/.version')" && \
 	if [ -z "$(PROJECT_DIR)" ]; then project_dir="$(ROOT)/$(TIMESTAMP_DIR)/$(PROJECT)/$(PIPELINE)/$$version" ; \
 	else project_dir="$(PROJECT_DIR)" ; fi ; \
 	$(MAKE) clone PROJECT_DIR="$$project_dir" && \
