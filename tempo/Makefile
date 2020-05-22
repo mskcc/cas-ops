@@ -27,7 +27,6 @@ EMAIL_USER:=$(shell whoami)
 EMAIL_HOST:=mskcc.org
 EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
 export PROJECT_FILE:=../.project
-export PARENT_CONFIG:=../config.json
 CONFIG_TEMPLATE:=.config.json
 export CONFIG_JSON:=config.json
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
