@@ -328,6 +328,33 @@ jira-comment: $(JIRA_MESSAGE)
 	--data @$(JIRA_MESSAGE) \
 	$(JIRA_URL)/rest/api/2/issue/$(JIRA_ISSUE)/comment
 
+
+# ~~~~ REPORTING ~~~~~ #
+# custom analysis reports
+REPORT_TEMPLATE_DIR:=$(CURDIR)/report
+REPORT_OUTPUT_DIR:=$(CURDIR)/report_output
+REPORT_OUTPUT_HTML:=report.html
+$(REPORT_OUTPUT_DIR):
+	mkdir -p "$(REPORT_OUTPUT_DIR)"
+
+define _report_script
+rmarkdown::render(input = 'main.Rmd',
+output_format = 'html_document',
+params = list(
+mapping_file = '$(MAPPING_TSV)',
+pairing_file = '$(PAIRING_TSV)'
+),
+output_file = '$(REPORT_OUTPUT_HTML)')
+endef
+export report_script = $(_report_script)
+report: $(REPORT_OUTPUT_DIR)
+	export PATH=/home/kellys5/bin/pandoc-2.9.2.1/bin:$(PATH) && \
+	module load R/R-3.6.3 && \
+	rsync -vrthP "$(REPORT_TEMPLATE_DIR)/" "$(REPORT_OUTPUT_DIR)" && \
+	cd "$(REPORT_OUTPUT_DIR)" && \
+	R --vanilla -e "$$report_script"
+.PHONY: report
+
 # ~~~~~ DEBUG ~~~~~ #
 # interactive shell with environment populated
 bash:
