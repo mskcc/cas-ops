@@ -1,0 +1,91 @@
+# QC
+```{r load_qc}
+sample_data <- read.delim(file = sample_data_file, header = TRUE, sep = '\t')
+concordance_data <- read.delim(file = concordance_data_file, header = TRUE, sep = '\t')
+contamination_data <- read.delim(file = contamination_file, header = TRUE, sep = '\t')
+alignment_data <- read.delim(file = alignment_qc_file, header = TRUE, sep = '\t')
+#  [1] "Sample"                      "TotalReads"                  "NumberDuplicateMarked"       "FractionDuplicateMarked"    
+#  [5] "NumberMapped"                "FractionMapped"              "NumberUnmapped"              "FractionUnmapped"           
+#  [9] "NumberSecondaryAlignments"   "FractionSecondaryAlignments" "TotalPairs"                  "NumberMappedProperPairs"    
+# [13] "FractionMappedProperPairs"   "MedianReadLength"            "MedianInsertSize"            "BasesOnBait"                
+# [17] "BasesOnTarget"               "MeanBaitCoverage"            "MeanTargetCoverage"          "MedianTargetCoverage"       
+# [21] "MaxTargetCoverage"           "FractionTargetsZeroCoverage" "FractionTargets10X"          "FractionTargets20X"         
+# [25] "FractionTargets50X"          "FractionTargets100X"        
+
+# convert to long format for plotting
+alignment_data_long <- reshape2::melt(alignment_data, id.vars="Sample", variable.name="Type",  value.name="Reads")
+
+# convert to millions for plot
+alignment_data_long[["Reads"]] <- as.numeric(alignment_data_long[["Reads"]]) / 1e6
+keep_cols <-  c("TotalReads", "NumberMapped")
+alignment_plot <- ggplot(data = alignment_data_long[ alignment_data_long[["Type"]] %in% keep_cols, ], 
+                         aes(x = Sample, y = Reads, fill = Type)) +
+  geom_bar(stat="identity", position = "dodge") +
+  coord_flip() +
+  ylab("Reads (millions)") + 
+  theme_bw() + 
+  theme(panel.grid.minor = element_blank())
+
+purity_plot <- ggplot(data = sample_data, aes(x = sample, y = purity)) +
+  geom_bar(stat="identity") + 
+  coord_flip() +
+  theme_bw()
+
+concordance_plot <- ggplot(data = concordance_data, aes(x = Pair, y = Concordance)) + 
+  geom_bar(stat="identity") + 
+  coord_flip() +
+  theme_bw()
+
+contamination_plot <- ggplot(data = contamination_data, aes(x = Pair, y = Contamination)) +
+  geom_bar(stat="identity") + 
+  coord_flip() +
+  theme_bw()
+
+```
+
+## Metrics
+
+```{r}
+keep_cols = colnames(sample_data)[grep(pattern = '^SBS|^HLA', x = colnames(sample_data), invert = TRUE)]
+datatable(data = sample_data[,keep_cols], filter = "top")
+```
+
+## Purity
+
+```{r}
+purity_plot
+```
+
+## Concordance
+
+```{r}
+concordance_plot
+```
+
+```{r}
+datatable(data = concordance_data, filter = "top")
+```
+
+## Contamination
+
+```{r}
+contamination_plot
+```
+
+```{r}
+datatable(data = contamination_data, filter = "top")
+```
+
+## Alignment
+
+```{r}
+alignment_plot
+```
+
+```{r}
+datatable(data = alignment_data, filter = "top")
+```
+
+```{r save_qc, include=FALSE}
+save.image(file="report.Rdata", compress = TRUE)
+```

@@ -1,0 +1,11 @@
+# Samples
+
+```{r samples}
+mapping[, c("SAMPLE", "TARGET")]
+```
+
+# Pairs
+
+```{r pairs}
+pairing
+```

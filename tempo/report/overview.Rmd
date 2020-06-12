@@ -1,0 +1,7 @@
+# Overview
+
+- Location: `r location`
+
+```{r print_config}
+kable(data.frame(t(data.frame(config))))
+```

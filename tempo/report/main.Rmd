@@ -23,39 +23,35 @@ params:
 ```{r setup, include=FALSE}
 # set up configs for use in the report
 knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(fig.height = 12)
-knitr::opts_chunk$set(fig.width = 12)
+knitr::opts_chunk$set(fig.height = 20)
+knitr::opts_chunk$set(fig.width = 20)
 library("ggplot2") 
 library("jsonlite")
 library("knitr")
+library("reshape2")
+library("DT")
 ```
 
 ```{r, load_data}
 # load all data that will be used in the report
+child_docs <- c("samples.Rmd", "qc.Rmd", "overview.Rmd")
 mapping <- read.delim(file = params$mapping_file, header = TRUE, sep = '\t')
 pairing <- read.delim(file = params$pairing_file, header = TRUE, sep = '\t')
 location <- getwd()
 config <- fromJSON(params$analysis_config_json, flatten=TRUE)
-# con = file(params$project_label_file, 'r')
-# project_label <- readLines(con = con)
-# close(con)
+sample_data_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "sample_data.txt")
+concordance_data_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "concordance_qc.txt")
+alignment_qc_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "alignment_qc.txt")
+contamination_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "contamination_qc.txt")
 ```
 
-# Overview
-
-```{r print_config}
-kable(data.frame(t(data.frame(config))))
+```{r compile_child, results='asis'}
+# load and compile each child doc
+for(child_doc in child_docs){
+    cat(knit_child(child_doc, quiet = TRUE))
+    cat('\n')
+}
 ```
-
-- Location: `r location`
-
-# Samples
-
-```{r samples}
-mapping[, c("SAMPLE", "TARGET")]
-pairing
-```
-
 
 ```{r save_image, include=FALSE}
 save.image(file="report.Rdata",compress = TRUE)
