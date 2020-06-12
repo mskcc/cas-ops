@@ -16,6 +16,8 @@ output:
 params:
   mapping_file: mapping.tsv
   pairing_file: pairing.tsv
+  output_dir: output
+  analysis_config_json: config.json
 
 ---
 ```{r setup, include=FALSE}
@@ -23,14 +25,29 @@ params:
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(fig.height = 12)
 knitr::opts_chunk$set(fig.width = 12)
-library("ggplot2")
+library("ggplot2") 
+library("jsonlite")
+library("knitr")
 ```
 
 ```{r, load_data}
 # load all data that will be used in the report
 mapping <- read.delim(file = params$mapping_file, header = TRUE, sep = '\t')
 pairing <- read.delim(file = params$pairing_file, header = TRUE, sep = '\t')
+location <- getwd()
+config <- fromJSON(params$analysis_config_json, flatten=TRUE)
+# con = file(params$project_label_file, 'r')
+# project_label <- readLines(con = con)
+# close(con)
 ```
+
+# Overview
+
+```{r print_config}
+kable(data.frame(t(data.frame(config))))
+```
+
+- Location: `r location`
 
 # Samples
 

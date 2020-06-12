@@ -26,9 +26,9 @@ export TIMESTAMP:=$(shell date +"%Y-%m-%d_%H-%M-%S")
 EMAIL_USER:=$(shell whoami)
 EMAIL_HOST:=mskcc.org
 EMAIL_ADDRESS:=$(EMAIL_USER)@$(EMAIL_HOST)
-export PROJECT_FILE:=../.project
+export PROJECT_FILE:=$(shell python -c 'import os; print(os.path.abspath("../.project"))')
 CONFIG_TEMPLATE:=.config.json
-export CONFIG_JSON:=config.json
+export CONFIG_JSON:=$(CURDIR)/config.json
 export LOG_DIR:=$(CURDIR)/logs/$(TIMESTAMP)
 # export NXF_ANSI_LOG:=false
 export NXF_ANSI_LOG:=true
@@ -342,7 +342,9 @@ rmarkdown::render(input = 'main.Rmd',
 output_format = 'html_document',
 params = list(
 mapping_file = '$(MAPPING_TSV)',
-pairing_file = '$(PAIRING_TSV)'
+pairing_file = '$(PAIRING_TSV)',
+output_dir = '$(OUTPUT_DIR)',
+analysis_config_json = '$(CONFIG_JSON)'
 ),
 output_file = '$(REPORT_OUTPUT_HTML)')
 endef
