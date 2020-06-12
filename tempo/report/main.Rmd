@@ -34,7 +34,7 @@ library("DT")
 
 ```{r, load_data}
 # load all data that will be used in the report
-child_docs <- c("samples.Rmd", "qc.Rmd", "overview.Rmd")
+child_docs <- c("overview.Rmd", "samples.Rmd", "qc.Rmd")
 mapping <- read.delim(file = params$mapping_file, header = TRUE, sep = '\t')
 pairing <- read.delim(file = params$pairing_file, header = TRUE, sep = '\t')
 location <- getwd()
