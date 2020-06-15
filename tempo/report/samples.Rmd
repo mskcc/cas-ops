@@ -1,10 +1,14 @@
 # Samples
 
+List of samples included in the analysis
+
 ```{r samples}
 mapping[, c("SAMPLE", "TARGET")]
 ```
 
-# Pairs
+## Pairs
+
+List of tumor-normal pairs included in the analysis
 
 ```{r pairs}
 pairing

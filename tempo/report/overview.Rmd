@@ -1,7 +1,8 @@
 # Overview
 
-- Location: `r location`
+- Project: `r config$project`
 
-```{r print_config}
-kable(data.frame(t(data.frame(config))))
-```
+- Analysis Pipeline: `r config$pipeline` ( version `r config$version`)
+
+<!-- - Location: `r location` -->
+

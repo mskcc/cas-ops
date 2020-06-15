@@ -23,8 +23,8 @@ params:
 ```{r setup, include=FALSE}
 # set up configs for use in the report
 knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(fig.height = 20)
-knitr::opts_chunk$set(fig.width = 20)
+# knitr::opts_chunk$set(fig.height = 20) 
+# knitr::opts_chunk$set(fig.width = 20)
 library("ggplot2") 
 library("jsonlite")
 library("knitr")
@@ -43,6 +43,22 @@ sample_data_file <- file.path(params$output_dir, "cohort_level", "default_cohort
 concordance_data_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "concordance_qc.txt")
 alignment_qc_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "alignment_qc.txt")
 contamination_file <- file.path(params$output_dir, "cohort_level", "default_cohort", "contamination_qc.txt")
+```
+
+```{r calc_fig_heights}
+# recalculate the default plot size based on the number of samples; default value is 7
+# https://yihui.org/knitr/options/#plots
+
+# default height
+fig_height_normal <- 7
+
+# recalculate for >20 samples
+if (nrow(pairing) > 20) {
+    fig_height_normal <-  nrow(pairing) / 7
+}
+
+# height for longer plots
+fig_height_long <- fig_height_normal * 3
 ```
 
 ```{r compile_child, results='asis'}

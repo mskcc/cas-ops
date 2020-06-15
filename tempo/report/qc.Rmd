@@ -1,6 +1,10 @@
 # QC
 ```{r load_qc}
 sample_data <- read.delim(file = sample_data_file, header = TRUE, sep = '\t')
+#   [1] "sample"              "purity"              "ploidy"              "WGD_status"          "MSI_Total_Sites"    
+#   [6] "MSI_Somatic_Sites"   "MSIscore"            "SBS1.observed"       "SBS1.pvalue"         "SBS2.observed"      
+#  [141] "SBS85.pvalue"        "HLA.A1"              "HLA.A2"              "HLA.B1"              "HLA.B2"             
+# [146] "HLA.C1"              "HLA.C2"              "Number_of_Mutations" "TMB" 
 concordance_data <- read.delim(file = concordance_data_file, header = TRUE, sep = '\t')
 contamination_data <- read.delim(file = contamination_file, header = TRUE, sep = '\t')
 alignment_data <- read.delim(file = alignment_qc_file, header = TRUE, sep = '\t')
@@ -14,51 +18,126 @@ alignment_data <- read.delim(file = alignment_qc_file, header = TRUE, sep = '\t'
 
 # convert to long format for plotting
 alignment_data_long <- reshape2::melt(alignment_data, id.vars="Sample", variable.name="Type",  value.name="Reads")
+sample_data_long <- reshape2::melt(sample_data, id.vars="sample", variable.name="variable",  value.name="value")
 
-# convert to millions for plot
-alignment_data_long[["Reads"]] <- as.numeric(alignment_data_long[["Reads"]]) / 1e6
-keep_cols <-  c("TotalReads", "NumberMapped")
-alignment_plot <- ggplot(data = alignment_data_long[ alignment_data_long[["Type"]] %in% keep_cols, ], 
-                         aes(x = Sample, y = Reads, fill = Type)) +
-  geom_bar(stat="identity", position = "dodge") +
-  coord_flip() +
-  ylab("Reads (millions)") + 
-  theme_bw() + 
-  theme(panel.grid.minor = element_blank())
+msi_score_plot <-  ggplot(data = sample_data_long[ sample_data_long[["variable"]]%in% c("MSIscore"),], 
+                          aes(x = sample, y = as.numeric(value))) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    ylab("MSI Score") + 
+    ggtitle("MSI Score") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
+number_of_mutations_plot <- ggplot(data = sample_data_long[ sample_data_long[["variable"]]%in% c("Number_of_Mutations"),], 
+                                   aes(x = sample, y = as.numeric(value))) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    ylab("Number of Mutations") + 
+    ggtitle("Number of Mutations") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
+tmb_plot <- ggplot(data = sample_data_long[ sample_data_long[["variable"]]%in% c("TMB"),], 
+                   aes(x = sample, y = as.numeric(value))) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    ylab("Tumor Mutation Burden") + 
+    ggtitle("Tumor Mutation Burden") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
+total_reads_plot <- ggplot(data = alignment_data_long[ alignment_data_long[["Type"]] %in% c("TotalReads"), ], 
+                           aes(x = Sample, y = as.numeric(Reads) / 1e6)) + # convert to millions for plot
+    geom_bar(stat="identity") +
+    coord_flip() +
+    ylab("Reads (millions)") + 
+    ggtitle("Total Number of Reads") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
+pcnt_mapped_reads_plot <- ggplot(data = alignment_data_long[ alignment_data_long[["Type"]] %in% c("FractionMapped"), ], 
+                                 aes(x = Sample, y = as.numeric(Reads) * 100)) + # convert to percentage for plot
+    geom_bar(stat="identity") +
+    ylim(0, 100) +
+    coord_flip() +
+    ylab("Percent") + 
+    ggtitle("Percent Mapped Reads") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
+coverage_plot <- ggplot(data =  alignment_data_long[ alignment_data_long[["Type"]] %in% c("MeanTargetCoverage", "MedianTargetCoverage"), ],
+                        aes(x = Sample, y = as.numeric(Reads), fill = Type) ) +
+    geom_bar(stat="identity", position = "dodge") +
+    ylab("Coverage") + 
+    coord_flip() +
+    ggtitle("Mean and Median Coverage") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
+
+low_coverage_plot <- ggplot(data =  alignment_data_long[ alignment_data_long[["Type"]] %in% c("FractionTargetsZeroCoverage", "FractionTargets50X"), ],
+                            aes(x = Sample, y = as.numeric(Reads) * 100, fill = Type) ) +
+    geom_bar(stat="identity", position = "dodge") +
+    ylab("Percent") + 
+    ylim(0, 100) +
+    coord_flip() +
+    ggtitle("Percent at Coverage Threshold") +
+    theme_bw() + 
+    theme(panel.grid.minor = element_blank())
+
 
 purity_plot <- ggplot(data = sample_data, aes(x = sample, y = purity)) +
-  geom_bar(stat="identity") + 
-  coord_flip() +
-  theme_bw()
+    geom_bar(stat="identity") + 
+    coord_flip() +
+    theme_bw()
 
 concordance_plot <- ggplot(data = concordance_data, aes(x = Pair, y = Concordance)) + 
-  geom_bar(stat="identity") + 
-  coord_flip() +
-  theme_bw()
+    geom_bar(stat="identity") + 
+    coord_flip() +
+    theme_bw()
 
 contamination_plot <- ggplot(data = contamination_data, aes(x = Pair, y = Contamination)) +
-  geom_bar(stat="identity") + 
-  coord_flip() +
-  theme_bw()
+    geom_bar(stat="identity") + 
+    coord_flip() +
+    theme_bw()
 
 ```
 
 ## Metrics
 
 ```{r}
-keep_cols = colnames(sample_data)[grep(pattern = '^SBS|^HLA', x = colnames(sample_data), invert = TRUE)]
+keep_cols <- colnames(sample_data)[grep(pattern = '^SBS|^HLA', x = colnames(sample_data), invert = TRUE)]
 datatable(data = sample_data[,keep_cols], filter = "top")
+```
+
+## Number of Mutations
+
+```{r, fig.height = fig_height_normal}
+number_of_mutations_plot
+```
+
+## Tumor Mutation Burden
+
+```{r, fig.height = fig_height_normal}
+tmb_plot
+```
+
+## MSI Score
+
+```{r, fig.height = fig_height_normal}
+msi_score_plot
 ```
 
 ## Purity
 
-```{r}
+```{r, fig.height = fig_height_normal}
 purity_plot
 ```
 
 ## Concordance
 
-```{r}
+```{r, fig.height = fig_height_normal}
 concordance_plot
 ```
 
@@ -68,7 +147,7 @@ datatable(data = concordance_data, filter = "top")
 
 ## Contamination
 
-```{r}
+```{r, fig.height = fig_height_normal}
 contamination_plot
 ```
 
@@ -76,14 +155,28 @@ contamination_plot
 datatable(data = contamination_data, filter = "top")
 ```
 
-## Alignment
+# Reads
 
-```{r}
-alignment_plot
-```
+## Metrics
 
 ```{r}
 datatable(data = alignment_data, filter = "top")
+```
+
+## Alignment
+
+```{r, fig.height = fig_height_long}
+total_reads_plot
+
+pcnt_mapped_reads_plot
+```
+
+## Coverage
+
+```{r, fig.height = fig_height_long}
+coverage_plot
+
+low_coverage_plot
 ```
 
 ```{r save_qc, include=FALSE}
