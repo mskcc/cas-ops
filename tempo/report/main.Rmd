@@ -50,11 +50,11 @@ contamination_file <- file.path(params$output_dir, "cohort_level", "default_coho
 # https://yihui.org/knitr/options/#plots
 
 # default height
-fig_height_normal <- 7
+fig_height_normal <- 8
 
 # recalculate for >20 samples
 if (nrow(pairing) > 20) {
-    fig_height_normal <-  nrow(pairing) / 7
+    fig_height_normal <-  nrow(pairing) / 8
 }
 
 # height for longer plots

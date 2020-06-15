@@ -7,6 +7,7 @@ sample_data <- read.delim(file = sample_data_file, header = TRUE, sep = '\t')
 # [146] "HLA.C1"              "HLA.C2"              "Number_of_Mutations" "TMB" 
 concordance_data <- read.delim(file = concordance_data_file, header = TRUE, sep = '\t')
 contamination_data <- read.delim(file = contamination_file, header = TRUE, sep = '\t')
+# [1] "Pair"          "Sample_Type"   "Sample_ID"     "Contamination"
 alignment_data <- read.delim(file = alignment_qc_file, header = TRUE, sep = '\t')
 #  [1] "Sample"                      "TotalReads"                  "NumberDuplicateMarked"       "FractionDuplicateMarked"    
 #  [5] "NumberMapped"                "FractionMapped"              "NumberUnmapped"              "FractionUnmapped"           
@@ -97,8 +98,13 @@ concordance_plot <- ggplot(data = concordance_data, aes(x = Pair, y = Concordanc
     coord_flip() +
     theme_bw()
 
-contamination_plot <- ggplot(data = contamination_data, aes(x = Pair, y = Contamination)) +
+# <2% as good, and <5% as “warn”.
+contamination_plot <- ggplot(data = contamination_data, aes(x = Sample_ID, y = Contamination, fill = Sample_Type)) +
     geom_bar(stat="identity") + 
+    geom_hline(yintercept=2, color = "yellow") +
+    geom_hline(yintercept=5, color = "red") +
+    ylab("Percent") + 
+    ggtitle("Percent Contamination") +
     coord_flip() +
     theme_bw()
 
@@ -147,9 +153,11 @@ datatable(data = concordance_data, filter = "top")
 
 ## Contamination
 
-```{r, fig.height = fig_height_normal}
+```{r, fig.height = fig_height_long}
 contamination_plot
 ```
+
+- <2% contamination is considered good, and >5% contamination is considered a warning sign
 
 ```{r}
 datatable(data = contamination_data, filter = "top")
